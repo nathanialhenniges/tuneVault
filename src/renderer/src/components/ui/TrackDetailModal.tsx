@@ -17,17 +17,18 @@ interface TrackDetailModalProps {
 export function TrackDetailModal({ track, onClose }: TrackDetailModalProps): JSX.Element {
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
-      style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100]"
+      style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div role="dialog" aria-modal="true" aria-labelledby="track-detail-title" className="glass-modal glass-border-float max-w-lg w-full mx-4 max-h-[80vh] flex flex-col glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="track-detail-title" className="glass-modal max-w-lg w-full mx-4 max-h-[80vh] flex flex-col glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
         {/* Header */}
         <div className="flex items-start gap-4 p-6 pb-4">
           <img
             src={track.thumbnailUrl}
             alt=""
             className="w-16 h-16 rounded-lg object-cover bg-bg-inset shrink-0"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
           />
           <div className="flex-1 min-w-0">
             <h2 id="track-detail-title" className="text-lg font-semibold truncate">{track.title}</h2>

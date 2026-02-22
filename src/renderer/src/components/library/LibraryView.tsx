@@ -195,8 +195,8 @@ export function LibraryView(): JSX.Element {
 
       {/* Delete All Confirmation Modal */}
       {showDeleteAllConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-          <div className="glass-modal glass-border-float p-6 max-w-md mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+          <div className="glass-modal p-6 max-w-md mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
             <h3 className="text-lg font-semibold mb-2">
               {playlistFilter !== 'all' ? `Delete ${tracks.length} Playlist Tracks?` : 'Delete Entire Library?'}
             </h3>
@@ -226,11 +226,11 @@ export function LibraryView(): JSX.Element {
       {/* Playlist Info Viewer Modal */}
       {playlistInfoContent && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+          style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
           onClick={(e) => { if (e.target === e.currentTarget) { setPlaylistInfoContent(null); setPlaylistInfoPath(null) } }}
         >
-          <div className="glass-modal glass-border-float p-6 max-w-3xl w-full mx-4 max-h-[85vh] flex flex-col glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
+          <div className="glass-modal p-6 max-w-3xl w-full mx-4 max-h-[85vh] flex flex-col glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
             <div className="flex items-center justify-between mb-4 shrink-0">
               <div className="flex items-center gap-2">
                 <DocumentTextIcon className="w-5 h-5 text-accent" />
@@ -265,8 +265,8 @@ export function LibraryView(): JSX.Element {
 
       {/* Delete Selected Confirmation Modal */}
       {showDeleteSelectedConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-          <div className="glass-modal glass-border-float p-6 max-w-md mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+          <div className="glass-modal p-6 max-w-md mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
             <h3 className="text-lg font-semibold mb-2">Delete {selectedTrackIds.size} tracks?</h3>
             <p className="text-sm text-text-secondary mb-6">
               This will permanently delete the selected tracks and their audio files from disk. This action cannot be undone.
