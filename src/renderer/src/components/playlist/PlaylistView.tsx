@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { PlaylistInput } from './PlaylistInput'
 import { TrackRow } from './TrackRow'
 import { usePlaylistStore } from '../../store/playlistStore'
@@ -13,8 +13,15 @@ export function PlaylistView(): JSX.Element {
   const { currentPlaylist, loading, loadedFromCache, refreshPlaylist } = usePlaylistStore()
   const { startDownload, isDownloading } = useDownload()
   const downloads = useDownloadStore((s) => s.downloads)
+  const clearDownloads = useDownloadStore((s) => s.clear)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const wolfMode = useWolfMode()
+
+  // Reset state when a new playlist is fetched
+  useEffect(() => {
+    setSelected(new Set())
+    clearDownloads()
+  }, [currentPlaylist])
 
   const allIds = useMemo(
     () => new Set(currentPlaylist?.tracks.map((t) => t.id) ?? []),
