@@ -1,5 +1,6 @@
-import { app, shell, BrowserWindow, globalShortcut, nativeImage } from 'electron'
+import { app, shell, BrowserWindow, globalShortcut, nativeImage, protocol, net } from 'electron'
 import { join } from 'path'
+import { pathToFileURL } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllIpc } from './ipc/register'
 import { createTray } from './tray'
@@ -9,6 +10,20 @@ function getIconPath(): string {
     ? join(app.getAppPath(), 'build', 'icon.png')
     : join(process.resourcesPath, 'icon.png')
 }
+
+// Register custom protocol for serving local audio files
+// This avoids CSP and cross-origin issues with file:// URLs
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'tunevault',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      stream: true
+    }
+  }
+])
 
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
@@ -49,6 +64,16 @@ function createWindow(): BrowserWindow {
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.nathanialhenniges.tunevault')
   app.setName('TuneVault')
+
+  // Handle tunevault:// protocol requests — serve local audio files
+  protocol.handle('tunevault', (request) => {
+    // URL format: tunevault://audio/<encoded-file-path>
+    const url = new URL(request.url)
+    const filePath = decodeURIComponent(url.pathname.replace(/^\/+/, ''))
+    // On Windows paths don't start with /, on macOS/Linux they do
+    const resolvedPath = process.platform === 'win32' ? filePath : '/' + filePath
+    return net.fetch(pathToFileURL(resolvedPath).href)
+  })
 
   // Set dock icon in dev mode (production uses electron-builder config)
   if (process.platform === 'darwin') {

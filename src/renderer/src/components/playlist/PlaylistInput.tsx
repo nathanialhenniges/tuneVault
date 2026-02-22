@@ -1,29 +1,75 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { usePlaylistStore } from '../../store/playlistStore'
 
 export function PlaylistInput(): JSX.Element {
   const [url, setUrl] = useState('')
-  const { fetchPlaylist, loading, error, clearError } = usePlaylistStore()
+  const [showRecent, setShowRecent] = useState(false)
+  const { fetchPlaylist, loading, error, clearError, recentPlaylists } = usePlaylistStore()
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault()
     if (!url.trim()) return
+    setShowRecent(false)
     fetchPlaylist(url.trim())
   }
+
+  const handleSelectRecent = (recentUrl: string): void => {
+    setUrl(recentUrl)
+    setShowRecent(false)
+    fetchPlaylist(recentUrl)
+  }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClick = (e: MouseEvent): void => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowRecent(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   return (
     <div>
       <form onSubmit={handleSubmit} className="flex gap-3">
-        <input
-          type="text"
-          value={url}
-          onChange={(e) => {
-            setUrl(e.target.value)
-            if (error) clearError()
-          }}
-          placeholder="Paste YouTube playlist URL..."
-          className="flex-1 bg-bg-surface border border-border-default rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition"
-        />
+        <div className="relative flex-1" ref={dropdownRef}>
+          <input
+            ref={inputRef}
+            type="text"
+            value={url}
+            onChange={(e) => {
+              setUrl(e.target.value)
+              if (error) clearError()
+            }}
+            onFocus={() => {
+              if (recentPlaylists.length > 0) setShowRecent(true)
+            }}
+            placeholder="Paste YouTube playlist URL..."
+            className="w-full bg-bg-surface border border-border-default rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition"
+          />
+
+          {showRecent && recentPlaylists.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-bg-surface border border-border-default rounded-lg shadow-xl z-50 overflow-hidden">
+              <div className="px-3 py-2 text-xs text-text-muted uppercase tracking-wider border-b border-border-default">
+                Recent Playlists
+              </div>
+              {recentPlaylists.map((recent) => (
+                <button
+                  key={recent.url}
+                  type="button"
+                  onClick={() => handleSelectRecent(recent.url)}
+                  className="w-full text-left px-3 py-2.5 text-sm hover:bg-bg-surface-hover transition truncate"
+                >
+                  <span className="text-text-primary">{recent.title}</span>
+                  <span className="block text-xs text-text-muted truncate mt-0.5">{recent.url}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           type="submit"
           disabled={loading || !url.trim()}
