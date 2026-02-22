@@ -7,7 +7,10 @@ export function SpinningWolf({ size = 80 }: { size?: number }): JSX.Element {
       alt="Wolf"
       width={size}
       height={size}
-      style={{ animation: 'wolfSpin 1.5s linear infinite' }}
+      style={{
+        animation: 'wolfOiia 1.2s ease-in-out infinite',
+        transformOrigin: 'center bottom'
+      }}
     />
   )
 }
