@@ -1,9 +1,10 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, lazy, Suspense } from 'react'
 import { useLocation, Routes, Route } from 'react-router-dom'
 import { PlaylistView } from '../playlist/PlaylistView'
-import { DownloadQueue } from '../download/DownloadQueue'
-import { LibraryView } from '../library/LibraryView'
-import { SettingsView } from '../settings/SettingsView'
+
+const DownloadQueue = lazy(() => import('../download/DownloadQueue').then((m) => ({ default: m.DownloadQueue })))
+const LibraryView = lazy(() => import('../library/LibraryView').then((m) => ({ default: m.LibraryView })))
+const SettingsView = lazy(() => import('../settings/SettingsView').then((m) => ({ default: m.SettingsView })))
 
 export function AnimatedRoutes(): JSX.Element {
   const location = useLocation()
@@ -30,12 +31,14 @@ export function AnimatedRoutes(): JSX.Element {
       className={transitionStage === 'enter' ? 'route-enter' : 'route-exit'}
       onAnimationEnd={handleAnimationEnd}
     >
-      <Routes location={displayLocation}>
-        <Route path="/" element={<PlaylistView />} />
-        <Route path="/downloads" element={<DownloadQueue />} />
-        <Route path="/library" element={<LibraryView />} />
-        <Route path="/settings" element={<SettingsView />} />
-      </Routes>
+      <Suspense fallback={<div className="flex items-center justify-center py-20 text-text-muted text-sm">Loading...</div>}>
+        <Routes location={displayLocation}>
+          <Route path="/" element={<PlaylistView />} />
+          <Route path="/downloads" element={<DownloadQueue />} />
+          <Route path="/library" element={<LibraryView />} />
+          <Route path="/settings" element={<SettingsView />} />
+        </Routes>
+      </Suspense>
     </div>
   )
 }

@@ -5,6 +5,7 @@ const RECENT_KEY = 'tunevault:recent-playlists'
 const CACHE_KEY = 'tunevault:playlist-cache'
 const MAX_RECENT = 5
 const CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutes
+const MAX_CACHE_ENTRIES = 10
 
 interface RecentPlaylist {
   url: string
@@ -72,6 +73,15 @@ function setCachedPlaylist(url: string, playlist: Playlist): void {
     for (const key of Object.keys(cache)) {
       if (Date.now() - cache[key].cachedAt > CACHE_TTL_MS) {
         delete cache[key]
+      }
+    }
+    // Evict oldest entries if over max size
+    const entries = Object.entries(cache)
+    if (entries.length >= MAX_CACHE_ENTRIES) {
+      entries.sort((a, b) => a[1].cachedAt - b[1].cachedAt)
+      const toEvict = entries.length - MAX_CACHE_ENTRIES + 1
+      for (let i = 0; i < toEvict; i++) {
+        delete cache[entries[i][0]]
       }
     }
     cache[url] = { playlist, cachedAt: Date.now() }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useLibraryStore } from '../../store/libraryStore'
 import { SearchBar } from './SearchBar'
 import { TrackList } from './TrackList'
@@ -35,7 +35,11 @@ function FocusTrapModal({ children, onClose }: { children: React.ReactNode; onCl
 }
 
 export function LibraryView(): JSX.Element {
-  const { loaded, load, getFilteredTracks, library, selectedTrackIds, selectAllTracks, clearSelection, deleteTracks, deleteAll, openFolder } = useLibraryStore()
+  const { loaded, load, library, selectedTrackIds, selectAllTracks, clearSelection, deleteTracks, deleteAll, openFolder } = useLibraryStore()
+  const searchQuery = useLibraryStore((s) => s.searchQuery)
+  const sortBy = useLibraryStore((s) => s.sortBy)
+  const sortDirection = useLibraryStore((s) => s.sortDirection)
+  const getFilteredTracks = useLibraryStore((s) => s.getFilteredTracks)
   const settings = useSettingsStore((s) => s.settings)
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false)
   const [showDeleteSelectedConfirm, setShowDeleteSelectedConfirm] = useState(false)
@@ -56,7 +60,9 @@ export function LibraryView(): JSX.Element {
     }
   }, [location.state])
 
-  const allTracks = getFilteredTracks()
+  // Memoize filtered tracks to avoid recomputing on unrelated re-renders
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const allTracks = useMemo(() => getFilteredTracks(), [library, searchQuery, sortBy, sortDirection])
   const tracks = playlistFilter === 'all'
     ? allTracks
     : allTracks.filter((t) => t.playlistId === playlistFilter)

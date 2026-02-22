@@ -4,13 +4,9 @@ import { audioEngine } from '../lib/audioEngine'
 import { useShortcutOverlayStore } from '../components/ui/KeyboardShortcutsModal'
 
 export function useKeyboardShortcuts(): void {
-  const togglePlay = usePlayerStore((s) => s.togglePlay)
-  const next = usePlayerStore((s) => s.next)
-  const prev = usePlayerStore((s) => s.prev)
-  const setVolume = usePlayerStore((s) => s.setVolume)
-  const volume = usePlayerStore((s) => s.volume)
-
   useEffect(() => {
+    let volumeThrottleTimer: ReturnType<typeof setTimeout> | null = null
+
     const handler = (e: KeyboardEvent): void => {
       // Don't handle shortcuts when typing in inputs
       if (
@@ -27,14 +23,16 @@ export function useKeyboardShortcuts(): void {
         return
       }
 
+      const store = usePlayerStore.getState()
+
       switch (e.code) {
         case 'Space':
           e.preventDefault()
-          togglePlay()
+          store.togglePlay()
           break
         case 'ArrowRight':
           if (e.metaKey || e.ctrlKey) {
-            next()
+            store.next()
           } else {
             // Seek forward 5s
             const currentSeek = audioEngine.getSeek()
@@ -43,7 +41,7 @@ export function useKeyboardShortcuts(): void {
           break
         case 'ArrowLeft':
           if (e.metaKey || e.ctrlKey) {
-            prev()
+            store.prev()
           } else {
             // Seek backward 5s
             const currentSeek2 = audioEngine.getSeek()
@@ -52,16 +50,25 @@ export function useKeyboardShortcuts(): void {
           break
         case 'ArrowUp':
           e.preventDefault()
-          setVolume(Math.min(1, volume + 0.05))
+          if (!volumeThrottleTimer) {
+            store.setVolume(Math.min(1, store.volume + 0.05))
+            volumeThrottleTimer = setTimeout(() => { volumeThrottleTimer = null }, 50)
+          }
           break
         case 'ArrowDown':
           e.preventDefault()
-          setVolume(Math.max(0, volume - 0.05))
+          if (!volumeThrottleTimer) {
+            store.setVolume(Math.max(0, store.volume - 0.05))
+            volumeThrottleTimer = setTimeout(() => { volumeThrottleTimer = null }, 50)
+          }
           break
       }
     }
 
     window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [togglePlay, next, prev, setVolume, volume])
+    return () => {
+      window.removeEventListener('keydown', handler)
+      if (volumeThrottleTimer) clearTimeout(volumeThrottleTimer)
+    }
+  }, [])
 }
