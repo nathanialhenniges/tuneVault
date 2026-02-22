@@ -138,11 +138,11 @@ async function downloadFfmpeg() {
       )
       // Remove the extracted ffmpeg directory and zip to save ~800MB
       execSync(
-        `powershell -command "Remove-Item -Path '${join(binDir, 'ffmpeg-*')}' -Recurse -Force -ErrorAction SilentlyContinue"`,
+        `powershell -command "Get-ChildItem -Path '${binDir}' -Directory -Filter 'ffmpeg-*' | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"`,
         { stdio: 'inherit' }
       )
       execSync(
-        `powershell -command "Remove-Item -Path '${zipPath}' -Force -ErrorAction SilentlyContinue"`,
+        `powershell -command "Remove-Item -LiteralPath '${zipPath}' -Force -ErrorAction SilentlyContinue"`,
         { stdio: 'inherit' }
       )
     }
