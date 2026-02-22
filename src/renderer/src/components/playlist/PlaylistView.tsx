@@ -59,6 +59,10 @@ export function PlaylistView(): JSX.Element {
     if (selected.size > 0) {
       startDownload(selected)
     } else {
+      // "Download All" — select all tracks in the UI to reflect the action
+      if (currentPlaylist) {
+        setSelected(new Set(allIds))
+      }
       startDownload()
     }
   }
