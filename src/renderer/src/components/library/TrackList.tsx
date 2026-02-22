@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import type { Track } from '../../../../shared/models'
 import { usePlayerStore } from '../../store/playerStore'
 import { useLibraryStore } from '../../store/libraryStore'
 import { Checkbox } from '../ui/Checkbox'
+import { ContextMenu } from '../ui/ContextMenu'
+import { TrackDetailModal } from '../ui/TrackDetailModal'
 import {
   FolderOpenIcon,
   TrashIcon,
   CheckIcon,
-  XMarkIcon
+  XMarkIcon,
+  InformationCircleIcon
 } from '@heroicons/react/24/outline'
 
 interface TrackListProps {
@@ -29,6 +32,8 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
   const deleteTracks = useLibraryStore((s) => s.deleteTracks)
   const openFolder = useLibraryStore((s) => s.openFolder)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; track: Track } | null>(null)
+  const [detailTrack, setDetailTrack] = useState<Track | null>(null)
 
   const handlePlay = (index: number): void => {
     setQueue(tracks, index)
@@ -39,6 +44,11 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
     await deleteTracks([trackId])
     setConfirmDeleteId(null)
   }
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, track: Track) => {
+    e.preventDefault()
+    setContextMenu({ x: e.clientX, y: e.clientY, track })
+  }, [])
 
   return (
     <div className="space-y-0.5">
@@ -59,6 +69,7 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
         return (
           <div
             key={track.id}
+            onContextMenu={(e) => handleContextMenu(e, track)}
             className={`flex items-center gap-4 px-4 py-2.5 rounded-lg transition group ${
               isCurrent
                 ? 'bg-accent-glow text-accent'
@@ -137,6 +148,36 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
           </div>
         )
       })}
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          items={[
+            {
+              label: 'View Details',
+              icon: <InformationCircleIcon className="w-4 h-4" />,
+              onClick: () => setDetailTrack(contextMenu.track)
+            },
+            ...(contextMenu.track.filePath ? [{
+              label: 'Show in Folder',
+              icon: <FolderOpenIcon className="w-4 h-4" />,
+              onClick: () => openFolder(contextMenu.track.filePath!)
+            }] : []),
+            {
+              label: 'Delete Track',
+              icon: <TrashIcon className="w-4 h-4" />,
+              onClick: () => setConfirmDeleteId(contextMenu.track.id),
+              danger: true
+            }
+          ]}
+        />
+      )}
+
+      {detailTrack && (
+        <TrackDetailModal track={detailTrack} onClose={() => setDetailTrack(null)} />
+      )}
     </div>
   )
 }

@@ -16,6 +16,7 @@ interface TrackRowProps {
   selected?: boolean
   onToggleSelect?: () => void
   downloadProgress?: DownloadProgress
+  onContextMenu?: (e: React.MouseEvent, track: Track) => void
 }
 
 function formatDuration(seconds: number): string {
@@ -52,6 +53,12 @@ function DownloadStatus({ progress }: { progress: DownloadProgress }): JSX.Eleme
           </span>
         </div>
       )
+    case 'rate-limited':
+      return (
+        <span title={progress.error} className="text-[10px] text-yellow-500 animate-pulse">
+          Rate limited
+        </span>
+      )
     case 'queued':
       return <ArrowDownTrayIcon className="w-3.5 h-3.5 text-text-muted animate-pulse" />
     default:
@@ -59,7 +66,7 @@ function DownloadStatus({ progress }: { progress: DownloadProgress }): JSX.Eleme
   }
 }
 
-export function TrackRow({ track, index, tracks, selected, onToggleSelect, downloadProgress }: TrackRowProps): JSX.Element {
+export function TrackRow({ track, index, tracks, selected, onToggleSelect, downloadProgress, onContextMenu }: TrackRowProps): JSX.Element {
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const setQueue = usePlayerStore((s) => s.setQueue)
   const play = usePlayerStore((s) => s.play)
@@ -73,8 +80,14 @@ export function TrackRow({ track, index, tracks, selected, onToggleSelect, downl
     play()
   }
 
+  const handleContextMenu = (e: React.MouseEvent): void => {
+    e.preventDefault()
+    onContextMenu?.(e, track)
+  }
+
   return (
     <div
+      onContextMenu={handleContextMenu}
       className={`flex items-center gap-4 px-4 py-2.5 rounded-lg transition group ${
         isCurrent
           ? 'bg-accent-glow text-accent'

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { PlaylistInput } from './PlaylistInput'
 import { TrackRow } from './TrackRow'
 import { usePlaylistStore } from '../../store/playlistStore'
@@ -7,10 +7,14 @@ import { useDownload } from '../../hooks/useDownload'
 import { useWolfMode } from '../../hooks/useWolfMode'
 import { Checkbox } from '../ui/Checkbox'
 import { PlaylistLoader } from '../ui/PlaylistLoader'
+import { ContextMenu } from '../ui/ContextMenu'
+import { TrackDetailModal } from '../ui/TrackDetailModal'
+import type { Track } from '../../../../shared/models'
 import {
   ArrowPathIcon,
   ClockIcon,
-  MusicalNoteIcon
+  MusicalNoteIcon,
+  InformationCircleIcon
 } from '@heroicons/react/24/outline'
 
 function formatTotalDuration(seconds: number): string {
@@ -27,6 +31,8 @@ export function PlaylistView(): JSX.Element {
   const clearDownloads = useDownloadStore((s) => s.clear)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const wolfMode = useWolfMode()
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; track: Track } | null>(null)
+  const [detailTrack, setDetailTrack] = useState<Track | null>(null)
 
   // Reset state when a new playlist is fetched
   useEffect(() => {
@@ -66,7 +72,7 @@ export function PlaylistView(): JSX.Element {
     if (downloads.size === 0) return null
     const all = Array.from(downloads.values())
     const active = all.filter(
-      (d) => d.status === 'downloading' || d.status === 'converting' || d.status === 'tagging'
+      (d) => d.status === 'downloading' || d.status === 'converting' || d.status === 'tagging' || d.status === 'rate-limited'
     ).length
     const done = all.filter((d) => d.status === 'done').length
     const total = all.length
@@ -102,6 +108,10 @@ export function PlaylistView(): JSX.Element {
       startDownload()
     }
   }
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, track: Track) => {
+    setContextMenu({ x: e.clientX, y: e.clientY, track })
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -231,10 +241,30 @@ export function PlaylistView(): JSX.Element {
                 selected={selected.has(track.id)}
                 onToggleSelect={() => toggleOne(track.id)}
                 downloadProgress={downloads.get(track.id)}
+                onContextMenu={handleContextMenu}
               />
             ))}
           </div>
         </div>
+      )}
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          items={[
+            {
+              label: 'View Details',
+              icon: <InformationCircleIcon className="w-4 h-4" />,
+              onClick: () => setDetailTrack(contextMenu.track)
+            }
+          ]}
+        />
+      )}
+
+      {detailTrack && (
+        <TrackDetailModal track={detailTrack} onClose={() => setDetailTrack(null)} />
       )}
     </div>
   )

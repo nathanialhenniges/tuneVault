@@ -106,15 +106,28 @@ export class YtdlpService {
         const line = data.toString()
         // yt-dlp writes some output to stderr, check for actual errors
         if (line.includes('ERROR')) {
-          onProgress({
-            trackId: track.id,
-            videoId: track.videoId,
-            percent: 0,
-            speed: '',
-            eta: '',
-            status: 'error',
-            error: line.trim()
-          })
+          // Detect rate limiting (HTTP 429)
+          if (line.includes('429') || line.toLowerCase().includes('too many requests') || line.toLowerCase().includes('rate limit')) {
+            onProgress({
+              trackId: track.id,
+              videoId: track.videoId,
+              percent: 0,
+              speed: '',
+              eta: '',
+              status: 'error',
+              error: 'RATE_LIMITED'
+            })
+          } else {
+            onProgress({
+              trackId: track.id,
+              videoId: track.videoId,
+              percent: 0,
+              speed: '',
+              eta: '',
+              status: 'error',
+              error: line.trim()
+            })
+          }
         }
       })
 
@@ -191,12 +204,13 @@ export class YtdlpService {
     })
   }
 
-  async fetchTrackMeta(videoId: string): Promise<{ releaseDate?: string; bitrate?: number }> {
+  async fetchTrackMeta(videoId: string): Promise<{ releaseDate?: string; bitrate?: number; description?: string }> {
     try {
       const json = await this.dumpJson(videoId)
       const releaseDate = (json.release_date as string) || (json.upload_date as string) || undefined
       const bitrate = typeof json.abr === 'number' ? Math.round(json.abr) : undefined
-      return { releaseDate, bitrate }
+      const description = typeof json.description === 'string' ? json.description : undefined
+      return { releaseDate, bitrate, description }
     } catch {
       return {}
     }

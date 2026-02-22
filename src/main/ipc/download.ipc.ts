@@ -30,6 +30,8 @@ function formatDate(raw: string, format: DateFormat): string {
 const activeDownloads = new Map<string, AbortController>()
 const activeBatches = new Map<string, () => void>()
 const cancelledTracks = new Set<string>()
+const RATE_LIMIT_WAIT_MS = 60_000 // Wait 60 seconds on rate limit
+const MAX_RETRIES = 3
 
 export function hasActiveDownloads(): boolean {
   return activeDownloads.size > 0 || activeBatches.size > 0
@@ -92,17 +94,40 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
         const controller = new AbortController()
         activeDownloads.set(track.id, controller)
 
-        ytdlp
-          .download({
-            track,
-            format,
-            outputDir,
-            playlistTitle: playlist.title,
-            onProgress: (progress) => {
-              mainWindow.webContents.send(IpcChannels.DOWNLOAD_PROGRESS, progress)
-            },
-            signal: controller.signal
-          })
+        const downloadWithRetry = async (retries: number): Promise<string> => {
+          try {
+            return await ytdlp.download({
+              track,
+              format,
+              outputDir,
+              playlistTitle: playlist.title,
+              onProgress: (progress) => {
+                mainWindow.webContents.send(IpcChannels.DOWNLOAD_PROGRESS, progress)
+              },
+              signal: controller.signal
+            })
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err)
+            if ((msg.includes('RATE_LIMITED') || msg.includes('429')) && retries > 0 && !cancelled) {
+              // Notify UI that we're paused due to rate limiting
+              mainWindow.webContents.send(IpcChannels.DOWNLOAD_PROGRESS, {
+                trackId: track.id,
+                videoId: track.videoId,
+                percent: 0,
+                speed: '',
+                eta: '',
+                status: 'rate-limited' as const,
+                error: `Rate limited — retrying in ${RATE_LIMIT_WAIT_MS / 1000}s`
+              })
+              await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_WAIT_MS))
+              if (cancelled || controller.signal.aborted) throw err
+              return downloadWithRetry(retries - 1)
+            }
+            throw err
+          }
+        }
+
+        downloadWithRetry(MAX_RETRIES)
           .then(async (filePath) => {
             // Tag with rich iTunes-compatible metadata
             mainWindow.webContents.send(IpcChannels.DOWNLOAD_PROGRESS, {
@@ -114,14 +139,16 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
               status: 'tagging'
             })
 
-            // Fetch metadata (release date + bitrate)
+            // Fetch metadata (release date + bitrate + description)
             let releaseDate: string | undefined
             let bitrate: number | undefined
+            let description: string | undefined
             const trackUrl = `https://www.youtube.com/watch?v=${track.videoId}`
 
             try {
               const meta = await ytdlp.fetchTrackMeta(track.videoId)
               bitrate = meta.bitrate
+              description = meta.description
 
               if (releaseDateSource === 'musicbrainz') {
                 const mbDate = await musicbrainz.lookupReleaseDate(track.artist, track.title)
@@ -160,11 +187,12 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
               downloadedAt: new Date().toISOString(),
               releaseDate: formattedDate,
               bitrate,
-              url: trackUrl
+              url: trackUrl,
+              description
             }
             library.upsertTrack(playlist, updatedTrack)
             const playlistDir = join(outputDir, ytdlp.sanitizeFilename(playlist.title))
-            library.writeTrackOrder(playlistDir, playlist.id)
+            library.writePlaylistInfo(playlistDir, playlist.id)
             mainWindow.webContents.send(IpcChannels.DOWNLOAD_COMPLETE, {
               trackId: track.id,
               filePath

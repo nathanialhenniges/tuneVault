@@ -114,21 +114,66 @@ export class LibraryService {
     return data
   }
 
-  writeTrackOrder(playlistDir: string, playlistId: string): void {
+  writePlaylistInfo(playlistDir: string, playlistId: string): void {
     const data = this.loadRaw()
     const pl = data.playlists.find((p) => p.id === playlistId)
     if (!pl) return
     const downloaded = pl.tracks
       .filter((t) => t.filePath)
       .sort((a, b) => a.position - b.position)
-    const lines = downloaded.map((t, i) => {
+
+    const lines: string[] = []
+    lines.push(`# ${pl.title}`)
+    lines.push('')
+    lines.push(`**Channel:** ${pl.channelTitle}`)
+    lines.push(`**Tracks:** ${downloaded.length}`)
+    lines.push(`**Downloaded:** ${new Date().toLocaleDateString()}`)
+    lines.push('')
+    lines.push('---')
+    lines.push('')
+
+    // Summary table
+    lines.push('| # | Artist | Title | Duration | Date | Bitrate |')
+    lines.push('|---|--------|-------|----------|------|---------|')
+    for (const t of downloaded) {
+      const m = Math.floor(t.duration / 60)
+      const s = t.duration % 60
+      const dur = `${m}:${String(s).padStart(2, '0')}`
+      lines.push(`| ${t.position} | ${t.artist} | ${t.title} | ${dur} | ${t.releaseDate || '-'} | ${t.bitrate ? `${t.bitrate}kbps` : '-'} |`)
+    }
+    lines.push('')
+    lines.push('---')
+    lines.push('')
+
+    // Individual track sections with descriptions
+    for (const t of downloaded) {
+      lines.push(`## ${t.position}. ${t.artist} - ${t.title}`)
+      lines.push('')
+      if (t.releaseDate) lines.push(`- **Date:** ${t.releaseDate}`)
+      if (t.bitrate) lines.push(`- **Bitrate:** ${t.bitrate}kbps`)
+      if (t.url) lines.push(`- **URL:** ${t.url}`)
+      lines.push('')
+      if (t.description) {
+        lines.push('**Description:**')
+        lines.push('')
+        lines.push(t.description)
+        lines.push('')
+      }
+      lines.push('---')
+      lines.push('')
+    }
+
+    writeFileSync(join(playlistDir, 'playlist-info.md'), lines.join('\n'), 'utf-8')
+
+    // Also write a simple track-order.txt
+    const txtLines = downloaded.map((t, i) => {
       let line = `${i + 1}) ${t.artist} - ${t.title}`
       if (t.releaseDate) line += ` | Date: ${t.releaseDate}`
       if (t.bitrate) line += ` | Bitrate: ${t.bitrate}kbps`
       if (t.url) line += ` | URL: ${t.url}`
       return line
     })
-    writeFileSync(join(playlistDir, 'track-order.txt'), lines.join('\n'), 'utf-8')
+    writeFileSync(join(playlistDir, 'track-order.txt'), txtLines.join('\n'), 'utf-8')
   }
 
   deleteAll(): void {
