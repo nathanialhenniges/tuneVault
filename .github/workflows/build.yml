@@ -10,6 +10,9 @@ on:
 env:
   CSC_IDENTITY_AUTO_DISCOVERY: false
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
