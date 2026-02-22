@@ -67,6 +67,8 @@ export class FfmpegService {
 
     if (metadata.date) {
       args.push('-metadata', `date=${metadata.date}`)
+      // Also write release_date for players that read TDRL (full date, not just year)
+      args.push('-metadata', `release_date=${metadata.date}`)
     }
     if (metadata.genre) {
       args.push('-metadata', `genre=${metadata.genre}`)
@@ -80,8 +82,8 @@ export class FfmpegService {
 
     // Handle format-specific options
     if (ext === '.mp3') {
-      // For MP3: use ID3v2 tags (iTunes compatible)
-      args.push('-id3v2_version', '3')
+      // For MP3: use ID3v2.4 tags (supports full date in TDRC frame)
+      args.push('-id3v2_version', '4')
       args.push('-codec:a', 'copy')
 
       if (thumbnailPath && existsSync(thumbnailPath)) {
