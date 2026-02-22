@@ -18,6 +18,8 @@
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:win": "npm run build && electron-builder --win",
     "dist:linux": "npm run build && electron-builder --linux",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "download-binaries": "node scripts/download-binaries.mjs"
   },
@@ -43,6 +45,7 @@
     "electron-vite": "^3.0.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.3",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "vitest": "^4.0.18"
   }
 }

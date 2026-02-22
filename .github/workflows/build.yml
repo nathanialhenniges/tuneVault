@@ -30,6 +30,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Test
+        run: npm test
+
       - name: Audit
         run: npm audit --audit-level=high || true
 

@@ -4,6 +4,7 @@ import { mkdirSync, unlinkSync } from 'fs'
 import { readdir } from 'fs/promises'
 import { BinaryService } from './binary.service'
 import type { Track, AudioFormat, DownloadProgress } from '../../shared/models'
+import { sanitizeFilename } from '../../shared/utils'
 
 interface DownloadOptions {
   track: Track
@@ -217,6 +218,6 @@ export class YtdlpService {
   }
 
   sanitizeFilename(name: string): string {
-    return name.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim()
+    return sanitizeFilename(name)
   }
 }

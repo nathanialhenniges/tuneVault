@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import type { Track } from '../../../../shared/models'
+import { formatDuration } from '../../../../shared/utils'
 import { usePlayerStore } from '../../store/playerStore'
 import { useLibraryStore } from '../../store/libraryStore'
 import { Checkbox } from '../ui/Checkbox'
@@ -15,12 +16,6 @@ import {
 
 interface TrackListProps {
   tracks: Track[]
-}
-
-function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${String(s).padStart(2, '0')}`
 }
 
 export function TrackList({ tracks }: TrackListProps): JSX.Element {

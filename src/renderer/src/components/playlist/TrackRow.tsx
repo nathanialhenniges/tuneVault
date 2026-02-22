@@ -1,4 +1,5 @@
 import type { Track, DownloadProgress } from '../../../../shared/models'
+import { formatDuration } from '../../../../shared/utils'
 import { usePlayerStore } from '../../store/playerStore'
 import { Checkbox } from '../ui/Checkbox'
 import { PlayIcon } from '@heroicons/react/24/solid'
@@ -17,12 +18,6 @@ interface TrackRowProps {
   onToggleSelect?: () => void
   downloadProgress?: DownloadProgress
   onContextMenu?: (e: React.MouseEvent, track: Track) => void
-}
-
-function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${String(s).padStart(2, '0')}`
 }
 
 function DownloadStatus({ progress }: { progress: DownloadProgress }): JSX.Element {
