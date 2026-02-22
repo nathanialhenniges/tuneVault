@@ -23,6 +23,7 @@ jobs:
             platform: win
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -39,6 +40,14 @@ jobs:
 
       - name: Download platform binaries
         run: npm run download-binaries
+
+      - name: Verify binaries (no bloat)
+        shell: bash
+        run: |
+          echo "Contents of resources/bin/:"
+          find resources/bin/ -type f | head -20
+          echo "---"
+          du -sh resources/bin/*/
 
       - name: Build
         run: npm run build
