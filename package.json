@@ -1,6 +1,6 @@
 {
   "name": "tunevault",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Download YouTube music playlists as high-quality audio files with a built-in player",
   "main": "./out/main/index.js",
   "author": "nathanialhenniges",
