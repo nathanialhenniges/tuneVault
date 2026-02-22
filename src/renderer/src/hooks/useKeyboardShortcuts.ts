@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { usePlayerStore } from '../store/playerStore'
 import { audioEngine } from '../lib/audioEngine'
+import { useShortcutOverlayStore } from '../components/ui/KeyboardShortcutsModal'
 
 export function useKeyboardShortcuts(): void {
   const togglePlay = usePlayerStore((s) => s.togglePlay)
@@ -16,6 +17,13 @@ export function useKeyboardShortcuts(): void {
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement
       ) {
+        return
+      }
+
+      // ? key (Shift+/) toggles shortcut overlay
+      if (e.key === '?') {
+        e.preventDefault()
+        useShortcutOverlayStore.getState().toggle()
         return
       }
 

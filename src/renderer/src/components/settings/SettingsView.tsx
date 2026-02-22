@@ -101,7 +101,7 @@ export function SettingsView(): JSX.Element {
           Simultaneous Downloads
         </label>
         <div className="flex items-center gap-3">
-          {[1, 2, 3, 4].map((n) => (
+          {[1, 2, 3, 4, 6, 8].map((n) => (
             <button
               key={n}
               onClick={() => update({ concurrency: n })}

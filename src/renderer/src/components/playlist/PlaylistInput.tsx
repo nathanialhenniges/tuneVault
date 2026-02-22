@@ -4,9 +4,17 @@ import { usePlaylistStore } from '../../store/playlistStore'
 export function PlaylistInput(): JSX.Element {
   const [url, setUrl] = useState('')
   const [showRecent, setShowRecent] = useState(false)
-  const { fetchPlaylist, loading, error, clearError, clearPlaylist, recentPlaylists } = usePlaylistStore()
+  const { fetchPlaylist, loading, error, clearError, clearPlaylist, recentPlaylists, pendingUrl, setPendingUrl } = usePlaylistStore()
   const dropdownRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Sync URL from drag-and-drop
+  useEffect(() => {
+    if (pendingUrl) {
+      setUrl(pendingUrl)
+      setPendingUrl(null)
+    }
+  }, [pendingUrl, setPendingUrl])
 
   const handleSubmit = (e: React.FormEvent): void => {
     e.preventDefault()

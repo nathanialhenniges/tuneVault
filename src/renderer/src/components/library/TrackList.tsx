@@ -28,7 +28,8 @@ interface LibraryTrackRowProps {
   isSelected: boolean
   confirmDeleteId: string | null
   onPlay: (index: number) => void
-  onToggleSelection: (id: string) => void
+  onToggleSelection: (id: string, index: number) => void
+  onShiftSelect: (index: number) => void
   onConfirmDelete: (id: string | null) => void
   onDeleteOne: (id: string) => void
   onOpenFolder: (path: string) => void
@@ -37,8 +38,17 @@ interface LibraryTrackRowProps {
 
 const LibraryTrackRow = memo(function LibraryTrackRow({
   track, index, isCurrent, isSelected, confirmDeleteId,
-  onPlay, onToggleSelection, onConfirmDelete, onDeleteOne, onOpenFolder, onContextMenu
+  onPlay, onToggleSelection, onShiftSelect, onConfirmDelete, onDeleteOne, onOpenFolder, onContextMenu
 }: LibraryTrackRowProps) {
+  const handleCheckboxClick = (e: React.MouseEvent): void => {
+    e.stopPropagation()
+    if (e.shiftKey) {
+      onShiftSelect(index)
+    } else {
+      onToggleSelection(track.id, index)
+    }
+  }
+
   return (
     <div
       onContextMenu={(e) => onContextMenu(e, track)}
@@ -48,7 +58,7 @@ const LibraryTrackRow = memo(function LibraryTrackRow({
           : 'hover:bg-glass-hover'
       }`}
     >
-      <Checkbox checked={isSelected} onChange={() => onToggleSelection(track.id)} />
+      <Checkbox checked={isSelected} onChange={() => onToggleSelection(track.id, index)} onClick={handleCheckboxClick} />
 
       <button
         onClick={() => onPlay(index)}
@@ -157,6 +167,7 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
   const play = usePlayerStore((s) => s.play)
   const selectedTrackIds = useLibraryStore((s) => s.selectedTrackIds)
   const toggleTrackSelection = useLibraryStore((s) => s.toggleTrackSelection)
+  const shiftSelectTracks = useLibraryStore((s) => s.shiftSelectTracks)
   const deleteTracks = useLibraryStore((s) => s.deleteTracks)
   const openFolder = useLibraryStore((s) => s.openFolder)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
@@ -186,9 +197,13 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
     setContextMenu({ x: e.clientX, y: e.clientY, track })
   }, [])
 
-  const handleToggleSelection = useCallback((id: string) => {
-    toggleTrackSelection(id)
+  const handleToggleSelection = useCallback((id: string, index: number) => {
+    toggleTrackSelection(id, index)
   }, [toggleTrackSelection])
+
+  const handleShiftSelect = useCallback((index: number) => {
+    shiftSelectTracks(index, tracks)
+  }, [shiftSelectTracks, tracks])
 
   const handleOpenFolder = useCallback((path: string) => {
     openFolder(path)
@@ -242,6 +257,7 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
                   confirmDeleteId={confirmDeleteId}
                   onPlay={handlePlay}
                   onToggleSelection={handleToggleSelection}
+                  onShiftSelect={handleShiftSelect}
                   onConfirmDelete={setConfirmDeleteId}
                   onDeleteOne={handleDeleteOne}
                   onOpenFolder={handleOpenFolder}

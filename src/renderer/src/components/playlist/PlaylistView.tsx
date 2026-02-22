@@ -210,6 +210,20 @@ export function PlaylistView(): JSX.Element {
             {downloadSummary.skipped > 0 && ` · ${downloadSummary.skipped} skipped`}
             {downloadSummary.errors > 0 && ` · ${downloadSummary.errors} failed`}
           </span>
+          {downloadSummary.errors > 0 && (
+            <button
+              onClick={() => {
+                const errorIds = new Set<string>()
+                downloads.forEach((d, id) => {
+                  if (d.status === 'error') errorIds.add(id)
+                })
+                startDownload(errorIds, true)
+              }}
+              className="ml-auto px-3 py-1.5 bg-accent hover:bg-accent-hover text-text-inverted rounded-lg text-xs font-medium transition"
+            >
+              Retry Failed
+            </button>
+          )}
         </div>
       )}
 
@@ -321,7 +335,12 @@ export function PlaylistView(): JSX.Element {
               label: 'View Details',
               icon: <InformationCircleIcon className="w-4 h-4" />,
               onClick: () => setDetailTrack(contextMenu.track)
-            }
+            },
+            ...(downloads.get(contextMenu.track.id)?.status === 'error' ? [{
+              label: 'Retry Download',
+              icon: <ArrowPathIcon className="w-4 h-4" />,
+              onClick: () => startDownload(new Set([contextMenu.track.id]), true)
+            }] : [])
           ]}
         />
       )}

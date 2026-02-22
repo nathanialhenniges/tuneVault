@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { MainLayout } from './components/layout/MainLayout'
 import { AnimatedRoutes } from './components/layout/AnimatedRoutes'
@@ -9,9 +9,11 @@ import { useDownloadStore } from './store/downloadStore'
 import { usePlayer } from './hooks/usePlayer'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { usePlayerStore } from './store/playerStore'
+import { usePlaylistStore } from './store/playlistStore'
 import { useKonamiCode } from './hooks/useKonamiCode'
 import { useWolfModeStore } from './hooks/useWolfMode'
 import { DisclaimerModal } from './components/ui/DisclaimerModal'
+import { KeyboardShortcutsModal } from './components/ui/KeyboardShortcutsModal'
 import { ToastContainer } from './components/ui/ToastContainer'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 
@@ -21,6 +23,8 @@ export default function App(): JSX.Element {
   const setProgress = useDownloadStore((s) => s.setProgress)
   const setComplete = useDownloadStore((s) => s.setComplete)
   const setError = useDownloadStore((s) => s.setError)
+  const [dragOver, setDragOver] = useState(false)
+  const dragCounterRef = useRef(0)
 
   usePlayer()
   useKeyboardShortcuts()
@@ -61,9 +65,42 @@ export default function App(): JSX.Element {
     }
   }, [])
 
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+  }, [])
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounterRef.current++
+    if (dragCounterRef.current === 1) setDragOver(true)
+  }, [])
+
+  const handleDragLeave = useCallback(() => {
+    dragCounterRef.current--
+    if (dragCounterRef.current === 0) setDragOver(false)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounterRef.current = 0
+    setDragOver(false)
+    const text = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain')
+    if (text && /[?&]list=/.test(text)) {
+      const url = text.trim().split('\n')[0]
+      usePlaylistStore.getState().setPendingUrl(url)
+      usePlaylistStore.getState().fetchPlaylist(url)
+    }
+  }, [])
+
   return (
     <MemoryRouter>
-      <div className="flex flex-col h-screen bg-transparent text-text-primary transition-colors duration-200">
+      <div
+        className="flex flex-col h-screen bg-transparent text-text-primary transition-colors duration-200"
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <MainLayout>
           <ErrorBoundary>
             <AnimatedRoutes />
@@ -71,7 +108,16 @@ export default function App(): JSX.Element {
         </MainLayout>
         <PlayerBar />
         <DisclaimerModal />
+        <KeyboardShortcutsModal />
         <ToastContainer />
+
+        {dragOver && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 pointer-events-none" style={{ backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}>
+            <div className="border-2 border-dashed border-accent rounded-2xl px-12 py-8 text-accent text-lg font-semibold">
+              Drop playlist URL
+            </div>
+          </div>
+        )}
       </div>
     </MemoryRouter>
   )

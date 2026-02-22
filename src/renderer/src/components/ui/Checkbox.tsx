@@ -1,10 +1,11 @@
 interface CheckboxProps {
   checked: boolean
   onChange: () => void
+  onClick?: (e: React.MouseEvent) => void
   className?: string
 }
 
-export function Checkbox({ checked, onChange, className = '' }: CheckboxProps): JSX.Element {
+export function Checkbox({ checked, onChange, onClick, className = '' }: CheckboxProps): JSX.Element {
   return (
     <button
       type="button"
@@ -12,7 +13,11 @@ export function Checkbox({ checked, onChange, className = '' }: CheckboxProps): 
       aria-checked={checked}
       onClick={(e) => {
         e.stopPropagation()
-        onChange()
+        if (onClick) {
+          onClick(e)
+        } else {
+          onChange()
+        }
       }}
       className={`tv-checkbox group relative shrink-0 w-[18px] h-[18px] rounded-[5px] border transition-all duration-200 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base ${
         checked

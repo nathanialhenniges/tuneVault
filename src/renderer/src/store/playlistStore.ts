@@ -23,11 +23,13 @@ interface PlaylistState {
   lastUrl: string | null
   loadedFromCache: boolean
   recentPlaylists: RecentPlaylist[]
+  pendingUrl: string | null
   fetchPlaylist: (url: string) => Promise<void>
   refreshPlaylist: () => Promise<void>
   clearPlaylist: () => void
   clearError: () => void
   loadRecent: () => void
+  setPendingUrl: (url: string | null) => void
 }
 
 function saveRecent(recent: RecentPlaylist[]): void {
@@ -122,6 +124,7 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
   lastUrl: null,
   loadedFromCache: false,
   recentPlaylists: loadRecentFromStorage(),
+  pendingUrl: null,
 
   fetchPlaylist: async (url: string) => {
     // Check renderer-side cache first for instant load
@@ -152,5 +155,7 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
 
   loadRecent: () => {
     set({ recentPlaylists: loadRecentFromStorage() })
-  }
+  },
+
+  setPendingUrl: (url) => set({ pendingUrl: url })
 }))

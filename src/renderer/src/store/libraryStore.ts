@@ -5,6 +5,25 @@ import { toast } from './toastStore'
 export type SortField = 'title' | 'artist' | 'duration' | 'dateAdded' | 'playlist'
 export type SortDirection = 'asc' | 'desc'
 
+const SORT_KEY = 'tunevault:library-sort'
+
+function loadSortPreference(): { sortBy: SortField; sortDirection: SortDirection } {
+  try {
+    const raw = localStorage.getItem(SORT_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      return { sortBy: parsed.sortBy ?? 'title', sortDirection: parsed.sortDirection ?? 'asc' }
+    }
+  } catch { /* ignore */ }
+  return { sortBy: 'title', sortDirection: 'asc' }
+}
+
+function saveSortPreference(sortBy: SortField, sortDirection: SortDirection): void {
+  try {
+    localStorage.setItem(SORT_KEY, JSON.stringify({ sortBy, sortDirection }))
+  } catch { /* ignore */ }
+}
+
 interface LibraryState {
   library: LibraryData
   loaded: boolean
@@ -19,7 +38,9 @@ interface LibraryState {
   getAllTracks: () => Track[]
   getFilteredTracks: () => Track[]
   getPlaylistTracks: (playlistId: string) => Track[]
-  toggleTrackSelection: (trackId: string) => void
+  lastSelectedIndex: number | null
+  toggleTrackSelection: (trackId: string, index?: number) => void
+  shiftSelectTracks: (currentIndex: number, tracks: Track[]) => void
   selectAllTracks: () => void
   clearSelection: () => void
   deleteTracks: (trackIds: string[]) => Promise<void>
@@ -27,13 +48,16 @@ interface LibraryState {
   openFolder: (filePath: string) => Promise<void>
 }
 
+const initialSort = loadSortPreference()
+
 export const useLibraryStore = create<LibraryState>((set, get) => ({
   library: { playlists: [], version: 1 },
   loaded: false,
   searchQuery: '',
   selectedTrackIds: new Set(),
-  sortBy: 'title',
-  sortDirection: 'asc',
+  sortBy: initialSort.sortBy,
+  sortDirection: initialSort.sortDirection,
+  lastSelectedIndex: null,
 
   load: async () => {
     // Verify checks files on disk and removes missing tracks
@@ -46,16 +70,24 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
   setSortBy: (field) => {
     const { sortBy, sortDirection } = get()
+    let newSortBy: SortField
+    let newDirection: SortDirection
     if (sortBy === field) {
-      set({ sortDirection: sortDirection === 'asc' ? 'desc' : 'asc' })
+      newSortBy = field
+      newDirection = sortDirection === 'asc' ? 'desc' : 'asc'
     } else {
-      set({ sortBy: field, sortDirection: 'asc' })
+      newSortBy = field
+      newDirection = 'asc'
     }
+    set({ sortBy: newSortBy, sortDirection: newDirection })
+    saveSortPreference(newSortBy, newDirection)
   },
 
   toggleSortDirection: () => {
-    const { sortDirection } = get()
-    set({ sortDirection: sortDirection === 'asc' ? 'desc' : 'asc' })
+    const { sortBy, sortDirection } = get()
+    const newDirection = sortDirection === 'asc' ? 'desc' : 'asc'
+    set({ sortDirection: newDirection })
+    saveSortPreference(sortBy, newDirection)
   },
 
   getAllTracks: () => {
@@ -105,7 +137,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     return playlist?.tracks.filter((t) => t.filePath) ?? []
   },
 
-  toggleTrackSelection: (trackId: string) => {
+  toggleTrackSelection: (trackId: string, index?: number) => {
     const { selectedTrackIds } = get()
     const newSet = new Set(selectedTrackIds)
     if (newSet.has(trackId)) {
@@ -113,7 +145,25 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     } else {
       newSet.add(trackId)
     }
-    set({ selectedTrackIds: newSet })
+    set({ selectedTrackIds: newSet, lastSelectedIndex: index ?? null })
+  },
+
+  shiftSelectTracks: (currentIndex: number, tracks: Track[]) => {
+    const { lastSelectedIndex, selectedTrackIds } = get()
+    if (lastSelectedIndex === null) {
+      // No previous selection — just select this one
+      const newSet = new Set(selectedTrackIds)
+      newSet.add(tracks[currentIndex].id)
+      set({ selectedTrackIds: newSet, lastSelectedIndex: currentIndex })
+      return
+    }
+    const start = Math.min(lastSelectedIndex, currentIndex)
+    const end = Math.max(lastSelectedIndex, currentIndex)
+    const newSet = new Set(selectedTrackIds)
+    for (let i = start; i <= end; i++) {
+      newSet.add(tracks[i].id)
+    }
+    set({ selectedTrackIds: newSet, lastSelectedIndex: currentIndex })
   },
 
   selectAllTracks: () => {
