@@ -2,6 +2,75 @@
 
 All notable changes to TuneVault will be documented in this file.
 
+## [2.3.0] - 2026-02-22
+
+### Performance
+- Extract `SeekBar` sub-component from `PlayerBar` to isolate 250ms seek tick re-renders
+- Consolidate Zustand selectors with `useShallow` in PlayerBar, LibraryView, and Visualizer store
+- Cache visualizer gradient — `createLinearGradient()` now called only on canvas resize instead of 60×/sec
+- Batch circular visualizer strokes into 8 alpha buckets (256 → 8 `stroke()` calls/frame)
+- Lazy-load `react-markdown` + `remark-gfm` via new `MarkdownViewer` wrapper (only loaded when Playlist Info modal opens)
+- Sidebar download badge uses a derived primitive count selector — no longer re-renders on every progress tick
+- Wrap `NowPlaying` with `React.memo` to prevent cascading re-renders from PlayerBar
+- Wrap `DownloadItem` with `React.memo` and custom comparator (compares id, status, percent, speed, eta, error)
+- Replace 4 separate `.filter()` passes in `DownloadQueue` with single-pass `useMemo` for O(n) stats
+- Move `SPEED_OPTIONS`, `CROSSFADE_OPTIONS`, `VISUALIZER_STYLES` to module scope in PlayerBar
+- Wrap `toggleOne` in `PlaylistView` with `useCallback`
+- Reduce virtual list overscan from 10 to 5 in `TrackList` and `PlaylistView`
+- Add `loading="lazy"` and `decoding="async"` to all thumbnail `<img>` tags (TrackList, PlaylistView, QueueView, DownloadItem)
+
+### Added
+- DM Sans variable font for section headings (Sidebar title, Library, Downloads, Playlists, Settings)
+- Button press micro-interaction (scale-down on `:active` for play/pause)
+- Download progress bar shimmer animation for active downloading/converting states
+- Track row hover nudge (subtle 2px rightward shift on library rows)
+- Album art glow (accent-colored blur behind NowPlaying thumbnail)
+- Empty state enhancements with accent blur glow and pulsing icon animation (Library, Downloads, Playlists)
+
+### Fixed
+- `settingsStore` MediaQueryList listener leak — stores reference and removes before re-adding on each `load()` call
+
+### Dependencies
+- Added `@fontsource-variable/dm-sans`
+
+## [2.2.0] - 2026-02-22
+
+### Added
+- Waveform visualizer with three styles: bars, waveform, and circular
+- Visualizer toggle in PlayerBar with right-click style picker
+- Playlist auto-sync: configurable interval to check synced playlists for new tracks
+- Sync Now button in Library toolbar
+- Per-playlist auto-sync toggle
+- Pending sync results banners with one-click download
+- `visualizerStore` and `syncStore` Zustand stores
+
+## [2.1.0] - 2026-02-22
+
+### Added
+- Keyboard shortcut overlay (toggle with `?`)
+- Drag-and-drop YouTube URLs onto the app window
+- Retry failed downloads button in completion summary
+- Persistent sort preferences in Library (saved across sessions)
+- Shift-click multi-select for track checkboxes
+- Debounced search input in Library
+
+## [2.0.0] - 2026-02-22
+
+### Added
+- Virtual scrolling for Library and Playlist track lists (`@tanstack/react-virtual`)
+- Column sorting in Library (title, playlist, duration)
+- Editable playback queue with drag-and-drop reordering
+- Error boundary wrapper for graceful crash recovery
+- Focus traps for all modal dialogs
+- Playback speed control (0.5×–2×)
+- Crossfade between tracks (0–6s)
+- Memoized filtered tracks and track row components
+
+### Performance
+- Lazy-loaded routes (Playlists, Downloads, Library, Settings)
+- Throttled download progress updates to renderer
+- Capped playlist cache size
+
 ## [1.3.0] - 2026-02-22
 
 ### Added

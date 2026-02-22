@@ -13,6 +13,8 @@ npm run dist:mac           # macOS only (dmg, zip)
 npm run dist:win           # Windows only (nsis, portable)
 npm run dist:linux         # Linux only (AppImage, deb)
 npm run download-binaries  # Fetch yt-dlp + ffmpeg + ffprobe for current platform
+npm test                   # Run Vitest unit tests
+npm run typecheck          # TypeScript type-check without emitting
 ```
 
 Binaries (yt-dlp, ffmpeg, ffprobe) must exist in `resources/bin/<mac|win|linux>/` before the app runs. Use `npm run download-binaries` or symlink from brew installs for dev.
@@ -36,12 +38,24 @@ Binaries (yt-dlp, ffmpeg, ffprobe) must exist in `resources/bin/<mac|win|linux>/
 
 ### Renderer Patterns
 
-- **Routing**: `MemoryRouter` with 4 routes — Playlists (`/`), Downloads, Library, Settings
-- **State**: One Zustand store per domain — `playerStore`, `playlistStore`, `downloadStore`, `libraryStore`, `settingsStore`
+- **Routing**: `MemoryRouter` with 4 lazy-loaded routes — Playlists (`/`), Downloads, Library, Settings
+- **State**: One Zustand store per domain — `playerStore`, `playlistStore`, `downloadStore`, `libraryStore`, `settingsStore`, `visualizerStore`, `syncStore`
+- **Zustand selectors**: Use `useShallow` from `zustand/react/shallow` when selecting multiple values from a store to avoid unnecessary re-renders. Prefer individual selectors for single primitives and `useShallow` for multi-value objects.
 - **Audio**: `AudioEngine` class wraps Howler.js. Callbacks must be passed in `load()` call (before Howl creation) to avoid race conditions.
 - **Theming**: CSS custom properties toggled by `.dark` class on `<html>`. Light default, obsidian dark with orange accent (`#f97316`). Theme applied in `settingsStore.ts`.
+- **Typography**: DM Sans (`@fontsource-variable/dm-sans`) used as a display font for section headings via `.font-display` class. Body text uses system fonts.
 - **Icons**: `@heroicons/react` (24px solid/outline variants)
 - **Reusable UI**: Custom `Checkbox` and `DisclaimerModal` in `components/ui/`
+- **Lazy loading**: Heavy dependencies like `react-markdown` are lazy-loaded via `React.lazy`/`Suspense` wrappers (see `MarkdownViewer.tsx`). All thumbnail `<img>` tags use `loading="lazy"` and `decoding="async"`.
+
+### Performance Patterns
+
+- **SeekBar isolation**: The seek bar (250ms tick updates) is extracted into its own `React.memo` sub-component within `PlayerBar.tsx` to prevent re-rendering the entire player bar on every tick.
+- **Module-scope constants**: Arrays like `SPEED_OPTIONS`, `CROSSFADE_OPTIONS`, `VISUALIZER_STYLES` are defined outside component functions to avoid re-creation on every render.
+- **Derived selectors**: Zustand selectors that return primitives (e.g., download count in Sidebar) prevent re-renders when the underlying data changes but the derived value doesn't. Avoid selecting entire Maps or objects when only a count is needed.
+- **React.memo**: Applied to components that receive stable props but live under frequently-updating parents (`NowPlaying`, `DownloadItem` with custom comparator, `LibraryTrackRow`).
+- **Virtual scrolling**: `@tanstack/react-virtual` with `overscan: 5` for Library and Playlist track lists.
+- **Canvas optimization**: Visualizer caches gradients (invalidated on resize) and batches draw calls by alpha bucket.
 
 ### Download Pipeline
 
@@ -75,3 +89,5 @@ Two configs via project references in `tsconfig.json`:
 - All file paths handled via `tunevault://` protocol for playback (never raw `file://`)
 - No YouTube API key needed — yt-dlp `--flat-playlist --dump-json` used for metadata
 - Electron-builder bundles platform binaries via `extraResources` from `resources/bin/`
+- CSS custom properties for theming; `.font-display` utility for display font; `.btn-press` for press feedback; `.download-shimmer` for progress bar animation
+- Version bumps go in `package.json`; changelog in `CHANGELOG.md`
