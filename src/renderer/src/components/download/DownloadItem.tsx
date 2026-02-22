@@ -1,6 +1,7 @@
 import type { DownloadProgress, Track } from '../../../../shared/models'
 import { ProgressBar } from './ProgressBar'
 import { useDownloadStore } from '../../store/downloadStore'
+import { XMarkIcon } from '@heroicons/react/24/outline'
 
 interface DownloadItemProps {
   track: Track
@@ -66,10 +67,10 @@ export function DownloadItem({ track, progress }: DownloadItemProps): JSX.Elemen
       {canCancel && (
         <button
           onClick={() => cancelOne(track.id)}
-          className="text-xs text-text-muted hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition px-2 py-1 rounded"
+          className="text-text-muted hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition p-1 rounded"
           title="Cancel download"
         >
-          ✕
+          <XMarkIcon className="w-4 h-4" />
         </button>
       )}
     </div>

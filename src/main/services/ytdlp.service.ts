@@ -1,6 +1,6 @@
 import { spawn, ChildProcess } from 'child_process'
 import { join } from 'path'
-import { mkdirSync } from 'fs'
+import { mkdirSync, readdirSync, unlinkSync } from 'fs'
 import { BinaryService } from './binary.service'
 import type { Track, AudioFormat, DownloadProgress } from '../../shared/models'
 
@@ -132,6 +132,21 @@ export class YtdlpService {
           // Determine the actual output path
           const ext = format === 'flac' ? 'flac' : format === 'opus' ? 'opus' : 'mp3'
           const finalPath = outputPath || join(playlistDir, `${filename}.${ext}`)
+
+          // Clean up temp files left by yt-dlp (webm, m4a, part, jpg, webp, etc.)
+          try {
+            const files = readdirSync(playlistDir)
+            const tempExts = ['.webm', '.m4a', '.part', '.jpg', '.webp', '.png', '.temp', '.tmp']
+            for (const file of files) {
+              if (file.startsWith(filename) && !file.endsWith(`.${ext}`)) {
+                const fileExt = file.substring(file.lastIndexOf('.'))
+                if (tempExts.includes(fileExt) || file.includes('.temp')) {
+                  try { unlinkSync(join(playlistDir, file)) } catch { /* ignore */ }
+                }
+              }
+            }
+          } catch { /* ignore cleanup errors */ }
+
           resolve(finalPath)
         } else {
           reject(new Error(`yt-dlp exited with code ${code}`))

@@ -2,17 +2,26 @@ import { useEffect, useState } from 'react'
 import { useLibraryStore } from '../../store/libraryStore'
 import { SearchBar } from './SearchBar'
 import { TrackList } from './TrackList'
+import {
+  ArrowPathIcon,
+  TrashIcon,
+  FunnelIcon
+} from '@heroicons/react/24/outline'
 
 export function LibraryView(): JSX.Element {
   const { loaded, load, getFilteredTracks, library, selectedTrackIds, selectAllTracks, clearSelection, deleteTracks, deleteAll } = useLibraryStore()
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false)
   const [showDeleteSelectedConfirm, setShowDeleteSelectedConfirm] = useState(false)
+  const [playlistFilter, setPlaylistFilter] = useState<string>('all')
 
   useEffect(() => {
     if (!loaded) load()
   }, [loaded])
 
-  const tracks = getFilteredTracks()
+  const allTracks = getFilteredTracks()
+  const tracks = playlistFilter === 'all'
+    ? allTracks
+    : allTracks.filter((t) => t.playlistId === playlistFilter)
   const hasSelection = selectedTrackIds.size > 0
   const allSelected = tracks.length > 0 && selectedTrackIds.size === tracks.length
 
@@ -27,7 +36,7 @@ export function LibraryView(): JSX.Element {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div>
@@ -38,14 +47,34 @@ export function LibraryView(): JSX.Element {
           </div>
           <button
             onClick={load}
-            className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary border border-border-default rounded-lg hover:border-accent/50 transition"
+            className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary border border-border-default rounded-lg hover:border-accent/50 transition flex items-center gap-1.5"
             title="Reload library"
           >
-            ↻ Reload
+            <ArrowPathIcon className="w-3.5 h-3.5" />
+            Reload
           </button>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Playlist filter */}
+          {library.playlists.length > 1 && (
+            <div className="relative flex items-center gap-1.5">
+              <FunnelIcon className="w-3.5 h-3.5 text-text-muted" />
+              <select
+                value={playlistFilter}
+                onChange={(e) => setPlaylistFilter(e.target.value)}
+                className="appearance-none bg-bg-surface border border-border-default rounded-lg px-3 py-1.5 pr-7 text-xs text-text-secondary hover:text-text-primary focus:outline-none focus:border-accent cursor-pointer transition"
+              >
+                <option value="all">All Playlists</option>
+                {library.playlists.map((pl) => (
+                  <option key={pl.id} value={pl.id}>
+                    {pl.title} ({pl.tracks.length})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {tracks.length > 0 && (
             <>
               <button
@@ -58,9 +87,10 @@ export function LibraryView(): JSX.Element {
               {hasSelection && (
                 <button
                   onClick={() => setShowDeleteSelectedConfirm(true)}
-                  className="px-3 py-1.5 text-xs text-red-600 dark:text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition"
+                  className="px-3 py-1.5 text-xs text-red-600 dark:text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition flex items-center gap-1.5"
                 >
-                  Delete {selectedTrackIds.size} Selected
+                  <TrashIcon className="w-3.5 h-3.5" />
+                  Delete {selectedTrackIds.size}
                 </button>
               )}
 

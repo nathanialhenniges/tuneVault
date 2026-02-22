@@ -43,7 +43,7 @@ export function PlaylistView(): JSX.Element {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold mb-4">Fetch Playlist</h2>
         <PlaylistInput />

@@ -1,12 +1,18 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useLibraryStore } from '../../store/libraryStore'
 import { useDownloadStore } from '../../store/downloadStore'
+import {
+  QueueListIcon,
+  ArrowDownTrayIcon,
+  MusicalNoteIcon,
+  Cog6ToothIcon
+} from '@heroicons/react/24/outline'
 
 const navItems = [
-  { path: '/', label: 'Playlists', icon: '♫' },
-  { path: '/downloads', label: 'Downloads', icon: '↓' },
-  { path: '/library', label: 'Library', icon: '♪' },
-  { path: '/settings', label: 'Settings', icon: '⚙' }
+  { path: '/', label: 'Playlists', Icon: QueueListIcon },
+  { path: '/downloads', label: 'Downloads', Icon: ArrowDownTrayIcon },
+  { path: '/library', label: 'Library', Icon: MusicalNoteIcon },
+  { path: '/settings', label: 'Settings', Icon: Cog6ToothIcon }
 ]
 
 export function Sidebar(): JSX.Element {
@@ -38,7 +44,7 @@ export function Sidebar(): JSX.Element {
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-surface-hover'
               }`}
             >
-              <span className="text-base">{item.icon}</span>
+              <item.Icon className="w-5 h-5" />
               <span>{item.label}</span>
               {item.path === '/downloads' && activeDownloads > 0 && (
                 <span className="ml-auto text-xs bg-accent-glow text-accent px-1.5 py-0.5 rounded-full">

@@ -1,6 +1,7 @@
 import type { Track } from '../../../../shared/models'
 import { usePlayerStore } from '../../store/playerStore'
 import { Checkbox } from '../ui/Checkbox'
+import { PlayIcon } from '@heroicons/react/24/solid'
 
 interface TrackRowProps {
   track: Track
@@ -66,8 +67,8 @@ export function TrackRow({ track, index, tracks, selected, onToggleSelect }: Tra
       <span className="text-xs text-text-muted">{formatDuration(track.duration)}</span>
 
       {track.filePath && (
-        <span className="text-xs text-accent opacity-0 group-hover:opacity-100 transition">
-          ▶
+        <span className="text-accent opacity-0 group-hover:opacity-100 transition">
+          <PlayIcon className="w-4 h-4" />
         </span>
       )}
     </div>

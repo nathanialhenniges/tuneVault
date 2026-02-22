@@ -12,6 +12,7 @@ import { useDownloadStore } from './store/downloadStore'
 import { usePlayer } from './hooks/usePlayer'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { usePlayerStore } from './store/playerStore'
+import { DisclaimerModal } from './components/ui/DisclaimerModal'
 
 export default function App(): JSX.Element {
   const loadSettings = useSettingsStore((s) => s.load)
@@ -68,6 +69,7 @@ export default function App(): JSX.Element {
           </Routes>
         </MainLayout>
         <PlayerBar />
+        <DisclaimerModal />
       </div>
     </MemoryRouter>
   )

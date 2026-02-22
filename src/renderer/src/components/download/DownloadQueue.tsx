@@ -17,7 +17,7 @@ export function DownloadQueue(): JSX.Element {
   ).length
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">Downloads</h2>

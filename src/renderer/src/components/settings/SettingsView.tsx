@@ -5,7 +5,7 @@ export function SettingsView(): JSX.Element {
   const { settings, update, selectMusicDir } = useSettingsStore()
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="space-y-8">
       <h2 className="text-xl font-semibold">Settings</h2>
 
       {/* Music Directory */}

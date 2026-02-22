@@ -3,6 +3,12 @@ import type { Track } from '../../../../shared/models'
 import { usePlayerStore } from '../../store/playerStore'
 import { useLibraryStore } from '../../store/libraryStore'
 import { Checkbox } from '../ui/Checkbox'
+import {
+  FolderOpenIcon,
+  TrashIcon,
+  CheckIcon,
+  XMarkIcon
+} from '@heroicons/react/24/outline'
 
 interface TrackListProps {
   tracks: Track[]
@@ -91,36 +97,36 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
               {track.filePath && (
                 <button
                   onClick={() => openFolder(track.filePath!)}
-                  className="text-xs text-text-muted hover:text-accent transition px-1.5 py-0.5 rounded"
+                  className="text-text-muted hover:text-accent transition p-1 rounded"
                   title="Show in folder"
                 >
-                  📁
+                  <FolderOpenIcon className="w-4 h-4" />
                 </button>
               )}
               {confirmDeleteId === track.id ? (
-                <div className="flex gap-1">
+                <div className="flex gap-0.5">
                   <button
                     onClick={() => handleDeleteOne(track.id)}
-                    className="text-xs text-red-500 hover:text-red-400 transition px-1 py-0.5"
+                    className="text-red-500 hover:text-red-400 transition p-1"
                     title="Confirm delete"
                   >
-                    ✓
+                    <CheckIcon className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setConfirmDeleteId(null)}
-                    className="text-xs text-text-muted hover:text-text-primary transition px-1 py-0.5"
+                    className="text-text-muted hover:text-text-primary transition p-1"
                     title="Cancel"
                   >
-                    ✕
+                    <XMarkIcon className="w-4 h-4" />
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={() => setConfirmDeleteId(track.id)}
-                  className="text-xs text-text-muted hover:text-red-500 transition px-1.5 py-0.5 rounded"
+                  className="text-text-muted hover:text-red-500 transition p-1 rounded"
                   title="Delete track"
                 >
-                  🗑
+                  <TrashIcon className="w-4 h-4" />
                 </button>
               )}
             </div>
