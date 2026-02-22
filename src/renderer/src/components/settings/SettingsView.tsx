@@ -1,8 +1,13 @@
 import { useSettingsStore } from '../../store/settingsStore'
-import type { AudioFormat } from '../../../../shared/models'
+import { useWolfModeStore } from '../../hooks/useWolfMode'
+import type { AudioFormat, DateFormat, ReleaseDateSource } from '../../../../shared/models'
+import wolfIcon from '../../assets/wolf-icon.png'
 
 export function SettingsView(): JSX.Element {
   const { settings, update, selectMusicDir } = useSettingsStore()
+  const wolfUnlocked = useWolfModeStore((s) => s.unlocked)
+  const wolfEnabled = useWolfModeStore((s) => s.enabled)
+  const toggleWolf = useWolfModeStore((s) => s.toggle)
 
   return (
     <div className="space-y-8">
@@ -42,6 +47,49 @@ export function SettingsView(): JSX.Element {
               }`}
             >
               {fmt.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Date Format */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium">Date Format</label>
+        <div className="flex gap-3">
+          {(['MM/DD/YYYY', 'DD/MM/YYYY', 'YYYY-MM-DD', 'DD Mon YYYY'] as DateFormat[]).map((fmt) => (
+            <button
+              key={fmt}
+              onClick={() => update({ dateFormat: fmt })}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                settings.dateFormat === fmt
+                  ? 'bg-accent text-text-inverted'
+                  : 'bg-bg-surface text-text-secondary hover:bg-bg-surface-hover'
+              }`}
+            >
+              {fmt}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Release Date Source */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium">Release Date Source</label>
+        <div className="flex gap-3">
+          {([
+            { value: 'youtube' as ReleaseDateSource, label: 'YouTube' },
+            { value: 'musicbrainz' as ReleaseDateSource, label: 'MusicBrainz' }
+          ]).map(({ value, label }) => (
+            <button
+              key={value}
+              onClick={() => update({ releaseDateSource: value })}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                settings.releaseDateSource === value
+                  ? 'bg-accent text-text-inverted'
+                  : 'bg-bg-surface text-text-secondary hover:bg-bg-surface-hover'
+              }`}
+            >
+              {label}
             </button>
           ))}
         </div>
@@ -88,6 +136,24 @@ export function SettingsView(): JSX.Element {
           ))}
         </div>
       </div>
+
+      {/* Wolf Mode — only visible after Konami code unlock */}
+      {wolfUnlocked && (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">Wolf Mode</label>
+          <button
+            onClick={toggleWolf}
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
+              wolfEnabled
+                ? 'bg-accent text-text-inverted'
+                : 'bg-bg-surface text-text-secondary hover:bg-bg-surface-hover'
+            }`}
+          >
+            <img src={wolfIcon} alt="" className="w-5 h-5" />
+            {wolfEnabled ? 'Enabled' : 'Disabled'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { MainLayout } from './components/layout/MainLayout'
 import { PlaylistView } from './components/playlist/PlaylistView'
@@ -12,6 +12,8 @@ import { useDownloadStore } from './store/downloadStore'
 import { usePlayer } from './hooks/usePlayer'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { usePlayerStore } from './store/playerStore'
+import { useKonamiCode } from './hooks/useKonamiCode'
+import { useWolfModeStore } from './hooks/useWolfMode'
 import { DisclaimerModal } from './components/ui/DisclaimerModal'
 
 export default function App(): JSX.Element {
@@ -23,6 +25,9 @@ export default function App(): JSX.Element {
 
   usePlayer()
   useKeyboardShortcuts()
+
+  const unlockWolf = useWolfModeStore((s) => s.unlock)
+  useKonamiCode(useCallback(() => unlockWolf(), [unlockWolf]))
 
   useEffect(() => {
     loadSettings()

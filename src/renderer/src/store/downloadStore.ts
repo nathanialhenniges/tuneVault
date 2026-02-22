@@ -31,7 +31,7 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
         downloads.set(trackId, { ...existing, status: 'done', percent: 100 })
       }
       const stillActive = Array.from(downloads.values()).some(
-        (d) => d.status !== 'done' && d.status !== 'error'
+        (d) => d.status !== 'done' && d.status !== 'skipped' && d.status !== 'error'
       )
       return { downloads, isDownloading: stillActive }
     }),
@@ -44,7 +44,7 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
         downloads.set(trackId, { ...existing, status: 'error', error })
       }
       const stillActive = Array.from(downloads.values()).some(
-        (d) => d.status !== 'done' && d.status !== 'error'
+        (d) => d.status !== 'done' && d.status !== 'skipped' && d.status !== 'error'
       )
       return { downloads, isDownloading: stillActive }
     }),
@@ -54,11 +54,11 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
     set((state) => {
       const downloads = new Map(state.downloads)
       const existing = downloads.get(trackId)
-      if (existing && existing.status !== 'done') {
+      if (existing && existing.status !== 'done' && existing.status !== 'skipped') {
         downloads.set(trackId, { ...existing, status: 'error', error: 'Cancelled' })
       }
       const stillActive = Array.from(downloads.values()).some(
-        (d) => d.status !== 'done' && d.status !== 'error'
+        (d) => d.status !== 'done' && d.status !== 'skipped' && d.status !== 'error'
       )
       return { downloads, isDownloading: stillActive }
     })
@@ -69,7 +69,7 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
     set((state) => {
       const downloads = new Map(state.downloads)
       for (const [id, d] of downloads) {
-        if (d.status !== 'done') {
+        if (d.status !== 'done' && d.status !== 'skipped') {
           downloads.set(id, { ...d, status: 'error', error: 'Cancelled' })
         }
       }

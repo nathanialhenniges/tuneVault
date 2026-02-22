@@ -19,6 +19,9 @@ export interface Track {
   filePath?: string
   format?: AudioFormat
   downloadedAt?: string
+  releaseDate?: string
+  bitrate?: number
+  url?: string
 }
 
 export interface Playlist {
@@ -31,12 +34,17 @@ export interface Playlist {
 }
 
 export type AudioFormat = 'flac' | 'opus' | 'mp3'
+export type DateFormat = 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'DD Mon YYYY'
+export type ReleaseDateSource = 'youtube' | 'musicbrainz'
 
 export interface DownloadRequest {
   playlist: Playlist
   format: AudioFormat
   outputDir: string
   concurrency: number
+  forceRedownload?: boolean
+  dateFormat?: DateFormat
+  releaseDateSource?: ReleaseDateSource
 }
 
 export interface DownloadProgress {
@@ -45,7 +53,7 @@ export interface DownloadProgress {
   percent: number
   speed: string
   eta: string
-  status: 'queued' | 'downloading' | 'converting' | 'tagging' | 'done' | 'error'
+  status: 'queued' | 'downloading' | 'converting' | 'tagging' | 'done' | 'skipped' | 'error'
   error?: string
 }
 
@@ -59,13 +67,17 @@ export interface AppSettings {
   audioFormat: AudioFormat
   concurrency: number
   theme: 'dark' | 'light' | 'system'
+  dateFormat: DateFormat
+  releaseDateSource: ReleaseDateSource
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   musicDir: '',
-  audioFormat: 'flac',
+  audioFormat: 'mp3',
   concurrency: 2,
-  theme: 'dark'
+  theme: 'dark',
+  dateFormat: 'MM/DD/YYYY',
+  releaseDateSource: 'youtube'
 }
 
 export interface MetadataEntry {
