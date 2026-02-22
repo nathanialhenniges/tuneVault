@@ -1,7 +1,13 @@
-import type { Track } from '../../../../shared/models'
+import type { Track, DownloadProgress } from '../../../../shared/models'
 import { usePlayerStore } from '../../store/playerStore'
 import { Checkbox } from '../ui/Checkbox'
 import { PlayIcon } from '@heroicons/react/24/solid'
+import {
+  CheckCircleIcon,
+  ArrowDownTrayIcon,
+  ExclamationCircleIcon,
+  ForwardIcon
+} from '@heroicons/react/24/outline'
 
 interface TrackRowProps {
   track: Track
@@ -9,6 +15,7 @@ interface TrackRowProps {
   tracks: Track[]
   selected?: boolean
   onToggleSelect?: () => void
+  downloadProgress?: DownloadProgress
 }
 
 function formatDuration(seconds: number): string {
@@ -17,7 +24,42 @@ function formatDuration(seconds: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-export function TrackRow({ track, index, tracks, selected, onToggleSelect }: TrackRowProps): JSX.Element {
+function DownloadStatus({ progress }: { progress: DownloadProgress }): JSX.Element {
+  switch (progress.status) {
+    case 'done':
+      return <CheckCircleIcon className="w-4 h-4 text-green-500" />
+    case 'skipped':
+      return <ForwardIcon className="w-4 h-4 text-yellow-500" />
+    case 'error':
+      return (
+        <span title={progress.error}>
+          <ExclamationCircleIcon className="w-4 h-4 text-red-500" />
+        </span>
+      )
+    case 'downloading':
+    case 'converting':
+    case 'tagging':
+      return (
+        <div className="flex items-center gap-1.5">
+          <div className="w-16 h-1 bg-bg-inset rounded-full overflow-hidden">
+            <div
+              className="h-full bg-accent rounded-full transition-all duration-300"
+              style={{ width: `${Math.min(progress.percent, 100)}%` }}
+            />
+          </div>
+          <span className="text-[10px] text-text-muted w-7 text-right">
+            {Math.round(progress.percent)}%
+          </span>
+        </div>
+      )
+    case 'queued':
+      return <ArrowDownTrayIcon className="w-3.5 h-3.5 text-text-muted animate-pulse" />
+    default:
+      return <></>
+  }
+}
+
+export function TrackRow({ track, index, tracks, selected, onToggleSelect, downloadProgress }: TrackRowProps): JSX.Element {
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const setQueue = usePlayerStore((s) => s.setQueue)
   const play = usePlayerStore((s) => s.play)
@@ -70,10 +112,16 @@ export function TrackRow({ track, index, tracks, selected, onToggleSelect }: Tra
         <span className="text-xs text-text-muted">{track.bitrate}kbs</span>
       )}
 
-      {track.filePath && (
-        <span className="text-accent opacity-0 group-hover:opacity-100 transition">
+      {downloadProgress ? (
+        <div className="w-20 flex justify-end">
+          <DownloadStatus progress={downloadProgress} />
+        </div>
+      ) : track.filePath ? (
+        <span className="w-20 flex justify-end text-accent opacity-0 group-hover:opacity-100 transition">
           <PlayIcon className="w-4 h-4" />
         </span>
+      ) : (
+        <span className="w-20" />
       )}
     </div>
   )
