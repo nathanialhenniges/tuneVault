@@ -1,6 +1,6 @@
 import { app } from 'electron'
-import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs'
-import { join, dirname } from 'path'
+import { writeFileSync, existsSync, mkdirSync, unlinkSync, readFileSync } from 'fs'
+import { join } from 'path'
 import type { LibraryData, Playlist, Track } from '../../shared/models'
 
 const LIBRARY_VERSION = 1
@@ -29,7 +29,7 @@ export class LibraryService {
   load(): LibraryData {
     const data = this.loadRaw()
     for (const playlist of data.playlists) {
-      this.applyTrackOrder(playlist)
+      playlist.tracks.sort((a, b) => a.position - b.position)
     }
     return data
   }
@@ -109,7 +109,7 @@ export class LibraryService {
 
     if (changed) this.save(data)
     for (const playlist of data.playlists) {
-      this.applyTrackOrder(playlist)
+      playlist.tracks.sort((a, b) => a.position - b.position)
     }
     return data
   }
@@ -129,36 +129,6 @@ export class LibraryService {
       return line
     })
     writeFileSync(join(playlistDir, 'track-order.txt'), lines.join('\n'), 'utf-8')
-  }
-
-  private applyTrackOrder(playlist: Playlist): void {
-    if (playlist.tracks.length === 0) return
-    const firstTrack = playlist.tracks.find((t) => t.filePath)
-    if (!firstTrack) return
-    const playlistDir = dirname(firstTrack.filePath!)
-    const orderFile = join(playlistDir, 'track-order.txt')
-    if (!existsSync(orderFile)) return
-
-    const lines = readFileSync(orderFile, 'utf-8')
-      .split('\n')
-      .filter((l) => l.trim())
-    const orderedKeys = lines
-      .map((line) => {
-        const match = line.match(/^\d+\)\s*(.+?)(?:\s*\||$)/)
-        return match ? match[1].trim().toLowerCase() : ''
-      })
-      .filter(Boolean)
-
-    const orderMap = new Map<string, number>()
-    orderedKeys.forEach((key, i) => orderMap.set(key, i))
-
-    playlist.tracks.sort((a, b) => {
-      const keyA = `${a.artist} - ${a.title}`.toLowerCase()
-      const keyB = `${b.artist} - ${b.title}`.toLowerCase()
-      const posA = orderMap.get(keyA) ?? 9999
-      const posB = orderMap.get(keyB) ?? 9999
-      return posA - posB
-    })
   }
 
   deleteAll(): void {
