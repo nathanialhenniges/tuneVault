@@ -8,11 +8,12 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
     "jsx": "react-jsx",
     "outDir": "./out",
     "rootDir": ".",
     "declaration": true,
-    "declarationMap": true,
     "sourceMap": true,
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "types": ["vite/client"]

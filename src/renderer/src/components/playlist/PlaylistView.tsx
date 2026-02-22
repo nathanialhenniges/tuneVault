@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { PlaylistInput } from './PlaylistInput'
 import { TrackRow } from './TrackRow'
 import { usePlaylistStore } from '../../store/playlistStore'
@@ -7,10 +7,14 @@ import { useDownload } from '../../hooks/useDownload'
 import { useWolfMode } from '../../hooks/useWolfMode'
 import { Checkbox } from '../ui/Checkbox'
 import { PlaylistLoader } from '../ui/PlaylistLoader'
+import { ContextMenu } from '../ui/ContextMenu'
+import { TrackDetailModal } from '../ui/TrackDetailModal'
+import type { Track } from '../../../../shared/models'
 import {
   ArrowPathIcon,
   ClockIcon,
-  MusicalNoteIcon
+  MusicalNoteIcon,
+  InformationCircleIcon
 } from '@heroicons/react/24/outline'
 
 function formatTotalDuration(seconds: number): string {
@@ -27,6 +31,8 @@ export function PlaylistView(): JSX.Element {
   const clearDownloads = useDownloadStore((s) => s.clear)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const wolfMode = useWolfMode()
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; track: Track } | null>(null)
+  const [detailTrack, setDetailTrack] = useState<Track | null>(null)
 
   // Reset state when a new playlist is fetched
   useEffect(() => {
@@ -66,7 +72,7 @@ export function PlaylistView(): JSX.Element {
     if (downloads.size === 0) return null
     const all = Array.from(downloads.values())
     const active = all.filter(
-      (d) => d.status === 'downloading' || d.status === 'converting' || d.status === 'tagging'
+      (d) => d.status === 'downloading' || d.status === 'converting' || d.status === 'tagging' || d.status === 'rate-limited'
     ).length
     const done = all.filter((d) => d.status === 'done').length
     const total = all.length
@@ -103,6 +109,10 @@ export function PlaylistView(): JSX.Element {
     }
   }
 
+  const handleContextMenu = useCallback((e: React.MouseEvent, track: Track) => {
+    setContextMenu({ x: e.clientX, y: e.clientY, track })
+  }, [])
+
   return (
     <div className="space-y-6">
       <div>
@@ -125,7 +135,7 @@ export function PlaylistView(): JSX.Element {
       )}
 
       {downloadSummary && !loading && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-bg-surface border border-border-default text-sm">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-glass-hover border border-[var(--glass-border-edge)] text-sm">
           <span className="text-accent font-medium">Download complete</span>
           <span className="text-text-secondary">
             {downloadSummary.done}/{downloadSummary.total} downloaded
@@ -138,18 +148,19 @@ export function PlaylistView(): JSX.Element {
       {currentPlaylist && (
         <div className="space-y-4">
           {/* Playlist header — sticky */}
-          <div className="sticky top-0 z-10 bg-bg-base pb-3">
+          <div className="sticky top-0 z-10 pb-2" style={{ background: 'var(--glass-sidebar-bg)', backdropFilter: 'blur(var(--glass-blur-chrome))', WebkitBackdropFilter: 'blur(var(--glass-blur-chrome))' }}>
             <div className="flex items-center gap-4">
               <img
                 src={currentPlaylist.thumbnailUrl}
                 alt=""
-                className="w-20 h-20 rounded-lg object-cover shadow-lg"
+                className="w-16 h-16 object-cover"
+                style={{ borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-glass-lg)' }}
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-semibold truncate">{currentPlaylist.title}</h3>
                   {loadedFromCache && (
-                    <span className="text-[10px] text-text-muted px-1.5 py-0.5 bg-bg-surface rounded shrink-0">cached</span>
+                    <span className="text-[10px] text-text-muted px-1.5 py-0.5 bg-glass-hover border border-[var(--glass-border-edge)] rounded shrink-0">cached</span>
                   )}
                 </div>
                 <p className="text-sm text-text-secondary">{currentPlaylist.channelTitle}</p>
@@ -231,10 +242,30 @@ export function PlaylistView(): JSX.Element {
                 selected={selected.has(track.id)}
                 onToggleSelect={() => toggleOne(track.id)}
                 downloadProgress={downloads.get(track.id)}
+                onContextMenu={handleContextMenu}
               />
             ))}
           </div>
         </div>
+      )}
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+          items={[
+            {
+              label: 'View Details',
+              icon: <InformationCircleIcon className="w-4 h-4" />,
+              onClick: () => setDetailTrack(contextMenu.track)
+            }
+          ]}
+        />
+      )}
+
+      {detailTrack && (
+        <TrackDetailModal track={detailTrack} onClose={() => setDetailTrack(null)} />
       )}
     </div>
   )

@@ -16,6 +16,7 @@ export function VolumeControl(): JSX.Element {
         onClick={() => setVolume(volume === 0 ? 0.8 : 0)}
         className="text-text-secondary hover:text-text-primary transition"
         title={volume === 0 ? 'Unmute' : 'Mute'}
+        aria-label={volume === 0 ? 'Unmute' : 'Mute'}
       >
         {volume === 0 ? (
           <SpeakerXMarkIcon className="w-4 h-4" />
@@ -30,7 +31,8 @@ export function VolumeControl(): JSX.Element {
         step={0.01}
         value={volume}
         onChange={(e) => setVolume(parseFloat(e.target.value))}
-        className="w-20 h-1 appearance-none bg-bg-inset rounded-full cursor-pointer"
+        className="w-20 h-1 appearance-none seek-track rounded-full cursor-pointer"
+        aria-label={`Volume ${percent}%`}
       />
       <span className="text-xs text-text-muted w-8 text-right">{percent}%</span>
     </div>

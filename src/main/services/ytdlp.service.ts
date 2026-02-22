@@ -1,8 +1,10 @@
 import { spawn, ChildProcess } from 'child_process'
 import { join } from 'path'
-import { mkdirSync, readdirSync, unlinkSync } from 'fs'
+import { mkdirSync, unlinkSync } from 'fs'
+import { readdir } from 'fs/promises'
 import { BinaryService } from './binary.service'
 import type { Track, AudioFormat, DownloadProgress } from '../../shared/models'
+import { sanitizeFilename } from '../../shared/utils'
 
 interface DownloadOptions {
   track: Track
@@ -106,15 +108,28 @@ export class YtdlpService {
         const line = data.toString()
         // yt-dlp writes some output to stderr, check for actual errors
         if (line.includes('ERROR')) {
-          onProgress({
-            trackId: track.id,
-            videoId: track.videoId,
-            percent: 0,
-            speed: '',
-            eta: '',
-            status: 'error',
-            error: line.trim()
-          })
+          // Detect rate limiting (HTTP 429)
+          if (line.includes('429') || line.toLowerCase().includes('too many requests') || line.toLowerCase().includes('rate limit')) {
+            onProgress({
+              trackId: track.id,
+              videoId: track.videoId,
+              percent: 0,
+              speed: '',
+              eta: '',
+              status: 'error',
+              error: 'RATE_LIMITED'
+            })
+          } else {
+            onProgress({
+              trackId: track.id,
+              videoId: track.videoId,
+              percent: 0,
+              speed: '',
+              eta: '',
+              status: 'error',
+              error: line.trim()
+            })
+          }
         }
       })
 
@@ -134,8 +149,7 @@ export class YtdlpService {
           const finalPath = outputPath || join(playlistDir, `${filename}.${ext}`)
 
           // Clean up temp files left by yt-dlp (webm, m4a, part, jpg, webp, etc.)
-          try {
-            const files = readdirSync(playlistDir)
+          readdir(playlistDir).then((files) => {
             const tempExts = ['.webm', '.m4a', '.part', '.jpg', '.webp', '.png', '.temp', '.tmp']
             for (const file of files) {
               if (file.startsWith(filename) && !file.endsWith(`.${ext}`)) {
@@ -145,7 +159,7 @@ export class YtdlpService {
                 }
               }
             }
-          } catch { /* ignore cleanup errors */ }
+          }).catch(() => { /* ignore cleanup errors */ })
 
           resolve(finalPath)
         } else {
@@ -191,18 +205,19 @@ export class YtdlpService {
     })
   }
 
-  async fetchTrackMeta(videoId: string): Promise<{ releaseDate?: string; bitrate?: number }> {
+  async fetchTrackMeta(videoId: string): Promise<{ releaseDate?: string; bitrate?: number; description?: string }> {
     try {
       const json = await this.dumpJson(videoId)
       const releaseDate = (json.release_date as string) || (json.upload_date as string) || undefined
       const bitrate = typeof json.abr === 'number' ? Math.round(json.abr) : undefined
-      return { releaseDate, bitrate }
+      const description = typeof json.description === 'string' ? json.description : undefined
+      return { releaseDate, bitrate, description }
     } catch {
       return {}
     }
   }
 
   sanitizeFilename(name: string): string {
-    return name.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim()
+    return sanitizeFilename(name)
   }
 }

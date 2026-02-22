@@ -1,4 +1,5 @@
 import type { Track, DownloadProgress } from '../../../../shared/models'
+import { formatDuration } from '../../../../shared/utils'
 import { usePlayerStore } from '../../store/playerStore'
 import { Checkbox } from '../ui/Checkbox'
 import { PlayIcon } from '@heroicons/react/24/solid'
@@ -16,12 +17,7 @@ interface TrackRowProps {
   selected?: boolean
   onToggleSelect?: () => void
   downloadProgress?: DownloadProgress
-}
-
-function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m}:${String(s).padStart(2, '0')}`
+  onContextMenu?: (e: React.MouseEvent, track: Track) => void
 }
 
 function DownloadStatus({ progress }: { progress: DownloadProgress }): JSX.Element {
@@ -52,6 +48,12 @@ function DownloadStatus({ progress }: { progress: DownloadProgress }): JSX.Eleme
           </span>
         </div>
       )
+    case 'rate-limited':
+      return (
+        <span title={progress.error} className="text-[10px] text-yellow-500 animate-pulse">
+          Rate limited
+        </span>
+      )
     case 'queued':
       return <ArrowDownTrayIcon className="w-3.5 h-3.5 text-text-muted animate-pulse" />
     default:
@@ -59,7 +61,7 @@ function DownloadStatus({ progress }: { progress: DownloadProgress }): JSX.Eleme
   }
 }
 
-export function TrackRow({ track, index, tracks, selected, onToggleSelect, downloadProgress }: TrackRowProps): JSX.Element {
+export function TrackRow({ track, index, tracks, selected, onToggleSelect, downloadProgress, onContextMenu }: TrackRowProps): JSX.Element {
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const setQueue = usePlayerStore((s) => s.setQueue)
   const play = usePlayerStore((s) => s.play)
@@ -73,14 +75,20 @@ export function TrackRow({ track, index, tracks, selected, onToggleSelect, downl
     play()
   }
 
+  const handleContextMenu = (e: React.MouseEvent): void => {
+    e.preventDefault()
+    onContextMenu?.(e, track)
+  }
+
   return (
     <div
-      className={`flex items-center gap-4 px-4 py-2.5 rounded-lg transition group ${
+      onContextMenu={handleContextMenu}
+      className={`flex items-center gap-4 px-4 py-2.5 rounded-[var(--radius-item)] transition group ${
         isCurrent
-          ? 'bg-accent-glow text-accent'
+          ? 'bg-accent/10 text-accent border-l-2 border-accent'
           : track.filePath
-            ? 'hover:bg-bg-surface-hover cursor-pointer'
-            : 'hover:bg-bg-surface-hover'
+            ? 'hover:bg-glass-hover cursor-pointer'
+            : 'hover:bg-glass-hover'
       }`}
     >
       {onToggleSelect !== undefined && (
@@ -99,6 +107,7 @@ export function TrackRow({ track, index, tracks, selected, onToggleSelect, downl
         alt=""
         className="w-10 h-10 rounded object-cover bg-bg-surface cursor-pointer"
         onClick={handlePlay}
+        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
       />
 
       <div className="flex-1 min-w-0 cursor-pointer" onClick={handlePlay}>
@@ -109,7 +118,7 @@ export function TrackRow({ track, index, tracks, selected, onToggleSelect, downl
       <span className="text-xs text-text-muted">{formatDuration(track.duration)}</span>
 
       {track.bitrate && (
-        <span className="text-xs text-text-muted">{track.bitrate}kbs</span>
+        <span className="text-xs text-text-muted">{track.bitrate}kbps</span>
       )}
 
       {downloadProgress ? (
@@ -117,7 +126,7 @@ export function TrackRow({ track, index, tracks, selected, onToggleSelect, downl
           <DownloadStatus progress={downloadProgress} />
         </div>
       ) : track.filePath ? (
-        <span className="w-20 flex justify-end text-accent opacity-0 group-hover:opacity-100 transition">
+        <span className="w-20 flex justify-end text-accent opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition">
           <PlayIcon className="w-4 h-4" />
         </span>
       ) : (

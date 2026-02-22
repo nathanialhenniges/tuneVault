@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useLibraryStore } from '../../store/libraryStore'
 import { SearchBar } from './SearchBar'
 import { TrackList } from './TrackList'
@@ -9,9 +9,13 @@ import {
   FolderOpenIcon,
   DocumentTextIcon,
   CheckIcon,
-  XMarkIcon
+  XMarkIcon,
+  MusicalNoteIcon
 } from '@heroicons/react/24/outline'
 import { useSettingsStore } from '../../store/settingsStore'
+import { useLocation } from 'react-router-dom'
+import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 export function LibraryView(): JSX.Element {
   const { loaded, load, getFilteredTracks, library, selectedTrackIds, selectAllTracks, clearSelection, deleteTracks, deleteAll, openFolder } = useLibraryStore()
@@ -19,12 +23,21 @@ export function LibraryView(): JSX.Element {
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false)
   const [showDeleteSelectedConfirm, setShowDeleteSelectedConfirm] = useState(false)
   const [playlistFilter, setPlaylistFilter] = useState<string>('all')
-  const [trackOrderContent, setTrackOrderContent] = useState<string | null>(null)
-  const [trackOrderPath, setTrackOrderPath] = useState<string | null>(null)
+  const [playlistInfoContent, setPlaylistInfoContent] = useState<string | null>(null)
+  const [playlistInfoPath, setPlaylistInfoPath] = useState<string | null>(null)
+  const location = useLocation()
 
   useEffect(() => {
     if (!loaded) load()
   }, [loaded])
+
+  // Auto-apply playlist filter from navigation state
+  useEffect(() => {
+    const state = location.state as { playlistFilter?: string } | null
+    if (state?.playlistFilter) {
+      setPlaylistFilter(state.playlistFilter)
+    }
+  }, [location.state])
 
   const allTracks = getFilteredTracks()
   const tracks = playlistFilter === 'all'
@@ -39,28 +52,29 @@ export function LibraryView(): JSX.Element {
   }
 
   const handleDeleteAll = async (): Promise<void> => {
-    await deleteAll()
+    if (playlistFilter !== 'all') {
+      // Only delete tracks visible under the current playlist filter
+      await deleteTracks(tracks.map((t) => t.id))
+    } else {
+      await deleteAll()
+    }
     setShowDeleteAllConfirm(false)
   }
 
-  const handleViewTrackOrder = async (): Promise<void> => {
+  const handleViewPlaylistInfo = async (): Promise<void> => {
     if (playlistFilter === 'all') return
     const [content, path] = await Promise.all([
-      window.api.readTrackOrder(playlistFilter),
-      window.api.getTrackOrderPath(playlistFilter)
+      window.api.readPlaylistInfo(playlistFilter),
+      window.api.getPlaylistInfoPath(playlistFilter)
     ])
     if (content) {
-      setTrackOrderContent(content)
-      setTrackOrderPath(path)
+      setPlaylistInfoContent(content)
+      setPlaylistInfoPath(path)
     }
   }
 
-  const handleOpenTrackOrderFile = async (): Promise<void> => {
-    if (trackOrderPath) await window.api.openFile(trackOrderPath)
-  }
-
-  const handleOpenTrackOrderFolder = async (): Promise<void> => {
-    if (trackOrderPath) await window.api.openFolder(trackOrderPath)
+  const handleOpenPlaylistInfoFolder = async (): Promise<void> => {
+    if (playlistInfoPath) await window.api.openFolder(playlistInfoPath)
   }
 
   return (
@@ -105,7 +119,8 @@ export function LibraryView(): JSX.Element {
               <select
                 value={playlistFilter}
                 onChange={(e) => setPlaylistFilter(e.target.value)}
-                className="appearance-none bg-bg-surface border border-border-default rounded-lg px-3 py-1.5 pr-7 text-xs text-text-secondary hover:text-text-primary focus:outline-none focus:border-accent cursor-pointer transition"
+                className="appearance-none border border-[var(--glass-border-edge)] rounded-lg px-3 py-1.5 pr-7 text-xs text-text-secondary hover:text-text-primary focus:outline-none focus:border-accent cursor-pointer transition"
+                style={{ background: 'var(--glass-input-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
               >
                 <option value="all">All Playlists</option>
                 {library.playlists.map((pl) => (
@@ -117,15 +132,15 @@ export function LibraryView(): JSX.Element {
             </div>
           )}
 
-          {/* View Track Order — only when a specific playlist is selected */}
+          {/* View Playlist Info — only when a specific playlist is selected */}
           {playlistFilter !== 'all' && (
             <button
-              onClick={handleViewTrackOrder}
+              onClick={handleViewPlaylistInfo}
               className="px-3 py-1.5 text-xs text-text-secondary hover:text-accent border border-border-default rounded-lg hover:border-accent/40 hover:bg-accent/5 transition-all flex items-center gap-1.5"
-              title="Open track-order.txt in your default editor"
+              title="View playlist-info.md"
             >
               <DocumentTextIcon className="w-3.5 h-3.5" />
-              Track Order
+              Playlist Info
             </button>
           )}
 
@@ -161,7 +176,7 @@ export function LibraryView(): JSX.Element {
                 className="px-3 py-1.5 text-xs text-red-400 border border-red-500/25 rounded-lg hover:bg-red-500/10 hover:border-red-500/40 transition-all flex items-center gap-1.5"
               >
                 <TrashIcon className="w-3.5 h-3.5" />
-                Delete All
+                {playlistFilter !== 'all' ? `Delete All ${tracks.length}` : 'Delete All'}
               </button>
             </>
           )}
@@ -169,7 +184,8 @@ export function LibraryView(): JSX.Element {
       </div>
 
       {tracks.length === 0 ? (
-        <div className="text-center py-20 text-text-muted">
+        <div className="flex flex-col items-center justify-center py-20 text-text-muted">
+          <MusicalNoteIcon className="w-12 h-12 mb-3 opacity-30" />
           <p className="text-lg">Your library is empty</p>
           <p className="text-sm mt-1">Download some playlists to get started</p>
         </div>
@@ -179,11 +195,15 @@ export function LibraryView(): JSX.Element {
 
       {/* Delete All Confirmation Modal */}
       {showDeleteAllConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-bg-surface border border-border-default rounded-xl p-6 max-w-md mx-4 shadow-2xl">
-            <h3 className="text-lg font-semibold mb-2">Delete Entire Library?</h3>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+          <div className="glass-modal glass-border-float p-6 max-w-md mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
+            <h3 className="text-lg font-semibold mb-2">
+              {playlistFilter !== 'all' ? `Delete ${tracks.length} Playlist Tracks?` : 'Delete Entire Library?'}
+            </h3>
             <p className="text-sm text-text-secondary mb-6">
-              This will permanently delete all {tracks.length} tracks and their audio files from disk. This action cannot be undone.
+              {playlistFilter !== 'all'
+                ? `This will permanently delete all ${tracks.length} tracks from this playlist and their audio files from disk. This action cannot be undone.`
+                : `This will permanently delete all ${tracks.length} tracks and their audio files from disk. This action cannot be undone.`}
             </p>
             <div className="flex justify-end gap-3">
               <button
@@ -196,52 +216,47 @@ export function LibraryView(): JSX.Element {
                 onClick={handleDeleteAll}
                 className="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
               >
-                Delete Everything
+                {playlistFilter !== 'all' ? 'Delete Playlist Tracks' : 'Delete Everything'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Track Order Viewer Modal */}
-      {trackOrderContent && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-bg-surface border border-border-default rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
+      {/* Playlist Info Viewer Modal */}
+      {playlistInfoContent && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setPlaylistInfoContent(null); setPlaylistInfoPath(null) } }}
+        >
+          <div className="glass-modal glass-border-float p-6 max-w-3xl w-full mx-4 max-h-[85vh] flex flex-col glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
+            <div className="flex items-center justify-between mb-4 shrink-0">
               <div className="flex items-center gap-2">
                 <DocumentTextIcon className="w-5 h-5 text-accent" />
-                <h3 className="text-lg font-semibold">Track Order</h3>
+                <h3 className="text-lg font-semibold">Playlist Info</h3>
               </div>
               <button
-                onClick={() => { setTrackOrderContent(null); setTrackOrderPath(null) }}
-                className="p-1 text-text-muted hover:text-text-primary transition"
+                onClick={() => { setPlaylistInfoContent(null); setPlaylistInfoPath(null) }}
+                className="p-1.5 text-text-muted hover:text-text-primary transition rounded-lg hover:bg-glass-hover"
               >
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-text-muted mb-3">
-              Edit this file to customize track order. Reorder or remove lines, then reload the library.
-            </p>
+            <div className="flex-1 overflow-y-auto min-h-0 bg-glass-hover border border-[var(--glass-border-edge)] rounded-lg p-5">
+              <div className="markdown-prose">
+                <Markdown remarkPlugins={[remarkGfm]}>{playlistInfoContent}</Markdown>
+              </div>
+            </div>
 
-            <pre className="bg-bg-base border border-border-default rounded-lg p-4 text-sm text-text-secondary font-mono overflow-y-auto max-h-72 whitespace-pre-wrap leading-relaxed">
-              {trackOrderContent}
-            </pre>
-
-            <div className="flex justify-end gap-2 mt-4">
+            <div className="flex justify-end gap-2 mt-4 shrink-0">
               <button
-                onClick={handleOpenTrackOrderFolder}
+                onClick={handleOpenPlaylistInfoFolder}
                 className="px-3 py-1.5 text-xs text-text-secondary hover:text-accent border border-border-default rounded-lg hover:border-accent/40 hover:bg-accent/5 transition-all flex items-center gap-1.5"
               >
                 <FolderOpenIcon className="w-3.5 h-3.5" />
                 Open Folder
-              </button>
-              <button
-                onClick={handleOpenTrackOrderFile}
-                className="px-3 py-1.5 text-xs text-text-inverted bg-accent hover:bg-accent-hover rounded-lg transition-all flex items-center gap-1.5"
-              >
-                <DocumentTextIcon className="w-3.5 h-3.5" />
-                Open in Editor
               </button>
             </div>
           </div>
@@ -250,8 +265,8 @@ export function LibraryView(): JSX.Element {
 
       {/* Delete Selected Confirmation Modal */}
       {showDeleteSelectedConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-bg-surface border border-border-default rounded-xl p-6 max-w-md mx-4 shadow-2xl">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+          <div className="glass-modal glass-border-float p-6 max-w-md mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
             <h3 className="text-lg font-semibold mb-2">Delete {selectedTrackIds.size} tracks?</h3>
             <p className="text-sm text-text-secondary mb-6">
               This will permanently delete the selected tracks and their audio files from disk. This action cannot be undone.

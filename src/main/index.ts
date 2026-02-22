@@ -1,16 +1,31 @@
 import { app, shell, BrowserWindow, globalShortcut, nativeImage, protocol, net } from 'electron'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import { pathToFileURL } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllIpc } from './ipc/register'
 import { createTray } from './tray'
-import { hasActiveDownloads } from './ipc/download.ipc'
+import { abortAllDownloads, hasActiveDownloads } from './ipc/download.ipc'
+import { SettingsService } from './services/settings.service'
 
 function getIconPath(): string {
   return is.dev
     ? join(app.getAppPath(), 'build', 'icon.png')
     : join(process.resourcesPath, 'icon.png')
 }
+
+// Catch uncaught exceptions and unhandled rejections so the app doesn't crash silently
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err)
+})
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason)
+})
+
+// 1.4 — Single instance lock: prevent multiple app instances writing to same data files
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) {
+  app.quit()
+} else {
 
 // Register custom protocol for serving local audio files
 // This avoids CSP and cross-origin issues with file:// URLs
@@ -57,8 +72,16 @@ function createWindow(): BrowserWindow {
     }
   })
 
+  // 1.6 — Only allow https/http URLs to be opened externally
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+    try {
+      const url = new URL(details.url)
+      if (url.protocol === 'https:' || url.protocol === 'http:') {
+        shell.openExternal(details.url)
+      }
+    } catch {
+      // Invalid URL — do not open
+    }
     return { action: 'deny' }
   })
 
@@ -88,13 +111,21 @@ app.whenReady().then(() => {
     })
   }
 
-  // Handle tunevault:// protocol requests — serve local audio files
+  // 1.5 — Protocol handler with path traversal protection
   protocol.handle('tunevault', (request) => {
     // URL format: tunevault://audio/<encoded-file-path>
     const url = new URL(request.url)
     const filePath = decodeURIComponent(url.pathname.replace(/^\/+/, ''))
     // On Windows paths don't start with /, on macOS/Linux they do
-    const resolvedPath = process.platform === 'win32' ? filePath : '/' + filePath
+    const resolvedPath = resolve(process.platform === 'win32' ? filePath : '/' + filePath)
+
+    // Validate the resolved path is under the configured music directory
+    const settings = SettingsService.load()
+    const musicDir = resolve(settings.musicDir)
+    if (!resolvedPath.startsWith(musicDir + '/') && !resolvedPath.startsWith(musicDir + '\\') && resolvedPath !== musicDir) {
+      return new Response('Forbidden', { status: 403 })
+    }
+
     const fileUrl = pathToFileURL(resolvedPath).href
 
     // Forward Range headers so HTML5 <audio> seeking works
@@ -123,6 +154,8 @@ app.whenReady().then(() => {
   })
 
   const mainWindow = createWindow()
+
+  // 1.3 — Register IPC handlers once, not on every window creation
   registerAllIpc(mainWindow)
   createTray(mainWindow)
 
@@ -137,17 +170,33 @@ app.whenReady().then(() => {
     mainWindow.webContents.send('tray:prev')
   })
 
+  // 1.3 — On activate, only recreate window (IPC already registered above)
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      const w = createWindow()
-      registerAllIpc(w)
+    const existing = BrowserWindow.getAllWindows()
+    if (existing.length === 0) {
+      createWindow()
+    } else {
+      existing[0].show()
     }
+  })
+
+  // 1.4 — Focus existing window when second instance is launched
+  app.on('second-instance', () => {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.show()
+    mainWindow.focus()
   })
 })
 
 // Track when the app is truly quitting vs just closing a window
 app.on('before-quit', () => {
   ;(app as unknown as Record<string, boolean>).isQuitting = true
+  // 2.4 — Abort all active downloads on quit so child processes aren't orphaned
+  abortAllDownloads()
+})
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
 })
 
 app.on('window-all-closed', () => {
@@ -155,3 +204,5 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
+
+} // end of single-instance lock block

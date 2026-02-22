@@ -68,7 +68,7 @@ export function PlayerBar(): JSX.Element {
   }
 
   return (
-    <div className="h-24 bg-bg-surface border-t border-border-default flex items-center px-4 gap-4 relative transition-colors duration-200">
+    <div className="relative h-20 glass-chrome glass-border-player flex items-center px-4 gap-4 transition-colors duration-200">
       <NowPlaying />
 
       <div className="flex-1 flex flex-col items-center gap-1">
@@ -78,23 +78,26 @@ export function PlayerBar(): JSX.Element {
             onClick={toggleShuffle}
             className={`transition ${shuffle ? 'text-accent' : 'text-text-muted hover:text-text-secondary'}`}
             title="Shuffle"
+            aria-label="Shuffle"
+            aria-pressed={shuffle}
           >
             <ArrowsRightLeftIcon className="w-4 h-4" />
           </button>
 
-          <button onClick={prev} className="text-text-secondary hover:text-text-primary transition">
+          <button onClick={prev} className="text-text-secondary hover:text-text-primary transition" aria-label="Previous track">
             <BackwardIcon className="w-5 h-5" />
           </button>
 
           <button
             onClick={togglePlay}
             disabled={!currentTrack}
-            className="w-9 h-9 flex items-center justify-center bg-accent text-text-inverted rounded-full hover:bg-accent-hover hover:scale-105 disabled:opacity-50 transition"
+            className="w-9 h-9 flex items-center justify-center bg-accent text-text-inverted rounded-full hover:bg-accent-hover hover:scale-105 disabled:opacity-50 transition shadow-[0_0_12px_rgba(249,115,22,0.3)]"
+            aria-label={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? <PauseIcon className="w-5 h-5" /> : <PlayIcon className="w-5 h-5" />}
           </button>
 
-          <button onClick={next} className="text-text-secondary hover:text-text-primary transition">
+          <button onClick={next} className="text-text-secondary hover:text-text-primary transition" aria-label="Next track">
             <ForwardIcon className="w-5 h-5" />
           </button>
 
@@ -102,6 +105,7 @@ export function PlayerBar(): JSX.Element {
             onClick={cycleRepeat}
             className={`transition ${repeat !== 'off' ? 'text-accent' : 'text-text-muted hover:text-text-secondary'}`}
             title={`Repeat: ${repeat}`}
+            aria-label={`Repeat: ${repeat}`}
           >
             <RepeatIcon mode={repeat} />
           </button>
@@ -119,18 +123,21 @@ export function PlayerBar(): JSX.Element {
             onChange={handleSeekInput}
             onMouseUp={handleSeekCommit}
             onTouchEnd={handleSeekCommit}
-            className="flex-1 h-1 appearance-none bg-bg-inset rounded-full cursor-pointer"
+            className="flex-1 h-1 appearance-none seek-track rounded-full cursor-pointer"
+            aria-label="Seek"
           />
           <span className="text-xs text-text-muted w-10">{formatTime(duration)}</span>
         </div>
       </div>
 
-      <div className="flex items-center gap-3 w-64 justify-end relative">
+      <div className="flex items-center gap-3 w-52 justify-end relative">
         <VolumeControl />
         <button
           onClick={() => setShowQueue(!showQueue)}
           className="text-text-secondary hover:text-text-primary transition"
           title="Queue"
+          aria-label="Queue"
+          aria-expanded={showQueue}
         >
           <QueueListIcon className="w-5 h-5" />
         </button>

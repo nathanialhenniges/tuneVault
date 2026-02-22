@@ -7,37 +7,38 @@ import { FfmpegService } from '../services/ffmpeg.service'
 import { LibraryService } from '../services/library.service'
 import { MusicBrainzService } from '../services/musicbrainz.service'
 import type { DownloadRequest, Track, DateFormat } from '../../shared/models'
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-function formatDate(raw: string, format: DateFormat): string {
-  // Normalize: YYYYMMDD -> YYYY-MM-DD
-  const normalized = raw.length === 8
-    ? `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`
-    : raw
-  const parts = normalized.split('-')
-  if (parts.length < 3) return raw
-  const [yyyy, mm, dd] = parts
-  switch (format) {
-    case 'MM/DD/YYYY': return `${mm}/${dd}/${yyyy}`
-    case 'DD/MM/YYYY': return `${dd}/${mm}/${yyyy}`
-    case 'YYYY-MM-DD': return normalized
-    case 'DD Mon YYYY': return `${dd} ${MONTHS[parseInt(mm, 10) - 1] || mm} ${yyyy}`
-    default: return normalized
-  }
-}
+import { formatDate } from '../../shared/utils'
 
 const activeDownloads = new Map<string, AbortController>()
-const activeBatches = new Map<string, () => void>()
+const activeBatches = new Map<string, { cancel: () => void; remaining: number }>()
 const cancelledTracks = new Set<string>()
+const RATE_LIMIT_WAIT_MS = 60_000 // Wait 60 seconds on rate limit
+const MAX_RETRIES = 3
 
 export function hasActiveDownloads(): boolean {
   return activeDownloads.size > 0 || activeBatches.size > 0
 }
 
+/** Abort all active downloads — called on app quit to prevent orphaned child processes */
+export function abortAllDownloads(): void {
+  for (const [, batch] of activeBatches) {
+    batch.cancel()
+  }
+  activeBatches.clear()
+  for (const [trackId, controller] of activeDownloads) {
+    controller.abort()
+    activeDownloads.delete(trackId)
+  }
+}
+
 export function registerDownloadIpc(mainWindow: BrowserWindow): void {
   ipcMain.handle(IpcChannels.DOWNLOAD_START, async (_event, request: DownloadRequest) => {
-    const { playlist, format, outputDir, concurrency, forceRedownload, dateFormat, releaseDateSource } = request
+    if (!request || !request.playlist || !Array.isArray(request.playlist.tracks)) {
+      throw new Error('Invalid download request')
+    }
+    const { playlist, format, outputDir, forceRedownload, dateFormat, releaseDateSource } = request
+    // Clamp concurrency to safe range (1–8)
+    const concurrency = Math.max(1, Math.min(8, request.concurrency || 3))
     const ytdlp = new YtdlpService()
     const ffmpeg = new FfmpegService()
     const library = new LibraryService()
@@ -50,9 +51,17 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
     let idx = 0
     let cancelled = false
 
-    // Store a reference so cancelAll can stop the queue
+    // 1.2 — Track remaining items per batch for proper cleanup
     const batchId = playlist.id
-    activeBatches.set(batchId, () => { cancelled = true })
+    const batchState = { cancel: () => { cancelled = true }, remaining: totalTracks }
+    activeBatches.set(batchId, batchState)
+
+    const onTrackDone = (): void => {
+      batchState.remaining--
+      if (batchState.remaining <= 0) {
+        activeBatches.delete(batchId)
+      }
+    }
 
     const processNext = (): void => {
       if (cancelled) return
@@ -62,6 +71,7 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
         // Skip tracks that were individually cancelled while queued
         if (!activeDownloads.has(track.id) && cancelledTracks.has(track.id)) {
           cancelledTracks.delete(track.id)
+          onTrackDone()
           continue
         }
 
@@ -85,6 +95,7 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
             trackId: track.id,
             filePath: expectedPath
           })
+          onTrackDone()
           continue
         }
 
@@ -92,17 +103,40 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
         const controller = new AbortController()
         activeDownloads.set(track.id, controller)
 
-        ytdlp
-          .download({
-            track,
-            format,
-            outputDir,
-            playlistTitle: playlist.title,
-            onProgress: (progress) => {
-              mainWindow.webContents.send(IpcChannels.DOWNLOAD_PROGRESS, progress)
-            },
-            signal: controller.signal
-          })
+        const downloadWithRetry = async (retries: number): Promise<string> => {
+          try {
+            return await ytdlp.download({
+              track,
+              format,
+              outputDir,
+              playlistTitle: playlist.title,
+              onProgress: (progress) => {
+                mainWindow.webContents.send(IpcChannels.DOWNLOAD_PROGRESS, progress)
+              },
+              signal: controller.signal
+            })
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err)
+            if ((msg.includes('RATE_LIMITED') || msg.includes('429')) && retries > 0 && !cancelled) {
+              // Notify UI that we're paused due to rate limiting
+              mainWindow.webContents.send(IpcChannels.DOWNLOAD_PROGRESS, {
+                trackId: track.id,
+                videoId: track.videoId,
+                percent: 0,
+                speed: '',
+                eta: '',
+                status: 'rate-limited' as const,
+                error: `Rate limited — retrying in ${RATE_LIMIT_WAIT_MS / 1000}s`
+              })
+              await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_WAIT_MS))
+              if (cancelled || controller.signal.aborted) throw err
+              return downloadWithRetry(retries - 1)
+            }
+            throw err
+          }
+        }
+
+        downloadWithRetry(MAX_RETRIES)
           .then(async (filePath) => {
             // Tag with rich iTunes-compatible metadata
             mainWindow.webContents.send(IpcChannels.DOWNLOAD_PROGRESS, {
@@ -114,14 +148,16 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
               status: 'tagging'
             })
 
-            // Fetch metadata (release date + bitrate)
+            // Fetch metadata (release date + bitrate + description)
             let releaseDate: string | undefined
             let bitrate: number | undefined
+            let description: string | undefined
             const trackUrl = `https://www.youtube.com/watch?v=${track.videoId}`
 
             try {
               const meta = await ytdlp.fetchTrackMeta(track.videoId)
               bitrate = meta.bitrate
+              description = meta.description
 
               if (releaseDateSource === 'musicbrainz') {
                 const mbDate = await musicbrainz.lookupReleaseDate(track.artist, track.title)
@@ -160,11 +196,12 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
               downloadedAt: new Date().toISOString(),
               releaseDate: formattedDate,
               bitrate,
-              url: trackUrl
+              url: trackUrl,
+              description
             }
             library.upsertTrack(playlist, updatedTrack)
             const playlistDir = join(outputDir, ytdlp.sanitizeFilename(playlist.title))
-            library.writeTrackOrder(playlistDir, playlist.id)
+            library.writePlaylistInfo(playlistDir, playlist.id)
             mainWindow.webContents.send(IpcChannels.DOWNLOAD_COMPLETE, {
               trackId: track.id,
               filePath
@@ -191,6 +228,7 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
           .finally(() => {
             active--
             activeDownloads.delete(track.id)
+            onTrackDone()
             processNext()
           })
       }
@@ -212,16 +250,6 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
   })
 
   ipcMain.handle(IpcChannels.DOWNLOAD_CANCEL_ALL, async () => {
-    // Stop all batch queues from pulling new tracks
-    for (const [, stop] of activeBatches) {
-      stop()
-    }
-    activeBatches.clear()
-
-    // Abort all active downloads
-    for (const [trackId, controller] of activeDownloads) {
-      controller.abort()
-      activeDownloads.delete(trackId)
-    }
+    abortAllDownloads()
   })
 }

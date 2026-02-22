@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { writeFileSync, existsSync, mkdirSync, unlinkSync, readFileSync } from 'fs'
+import { writeFileSync, existsSync, mkdirSync, unlinkSync, readFileSync, renameSync } from 'fs'
 import { join } from 'path'
 import type { LibraryData, Playlist, Track } from '../../shared/models'
 
@@ -7,6 +7,8 @@ const LIBRARY_VERSION = 1
 
 export class LibraryService {
   private filePath: string
+  private static cache: LibraryData | null = null
+  private static writeQueue: Promise<void> = Promise.resolve()
 
   constructor() {
     const userDataPath = app.getPath('userData')
@@ -14,47 +16,94 @@ export class LibraryService {
     this.filePath = join(userDataPath, 'library.json')
   }
 
+  private loadFromDisk(): LibraryData {
+    // Try main file first
+    if (existsSync(this.filePath)) {
+      try {
+        const raw = readFileSync(this.filePath, 'utf-8')
+        return JSON.parse(raw) as LibraryData
+      } catch {
+        // Main file corrupted, try tmp fallback
+      }
+    }
+
+    // Fallback to .tmp file (may exist from interrupted atomic write)
+    const tmpPath = this.filePath + '.tmp'
+    if (existsSync(tmpPath)) {
+      try {
+        const raw = readFileSync(tmpPath, 'utf-8')
+        const data = JSON.parse(raw) as LibraryData
+        // Recover: promote tmp to main
+        try { renameSync(tmpPath, this.filePath) } catch { /* best effort */ }
+        return data
+      } catch {
+        // tmp also corrupted
+      }
+    }
+
+    return { playlists: [], version: LIBRARY_VERSION }
+  }
+
   private loadRaw(): LibraryData {
-    if (!existsSync(this.filePath)) {
-      return { playlists: [], version: LIBRARY_VERSION }
-    }
-    try {
-      const raw = readFileSync(this.filePath, 'utf-8')
-      return JSON.parse(raw) as LibraryData
-    } catch {
-      return { playlists: [], version: LIBRARY_VERSION }
-    }
+    if (LibraryService.cache) return LibraryService.cache
+    const data = this.loadFromDisk()
+    LibraryService.cache = data
+    return data
   }
 
   load(): LibraryData {
     const data = this.loadRaw()
-    for (const playlist of data.playlists) {
-      playlist.tracks.sort((a, b) => a.position - b.position)
+    // Return a deep-ish copy with sorted tracks
+    const result: LibraryData = {
+      ...data,
+      playlists: data.playlists.map((p) => ({
+        ...p,
+        tracks: [...p.tracks].sort((a, b) => a.position - b.position)
+      }))
     }
-    return data
+    return result
+  }
+
+  /** Atomic write: write to .tmp then rename over the target */
+  private writeToDisk(data: LibraryData): void {
+    const tmpPath = this.filePath + '.tmp'
+    writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8')
+    renameSync(tmpPath, this.filePath)
   }
 
   save(data: LibraryData): void {
-    writeFileSync(this.filePath, JSON.stringify(data, null, 2), 'utf-8')
+    LibraryService.cache = data
+    this.writeToDisk(data)
+  }
+
+  /** Enqueue a mutation to run serially, preventing concurrent read-modify-write races */
+  private enqueueWrite(mutate: (data: LibraryData) => void): void {
+    LibraryService.writeQueue = LibraryService.writeQueue.then(() => {
+      const data = this.loadRaw()
+      mutate(data)
+      LibraryService.cache = data
+      this.writeToDisk(data)
+    }).catch(() => {
+      // Ensure queue doesn't get stuck on error
+    })
   }
 
   upsertTrack(playlist: Playlist, track: Track): void {
-    const data = this.loadRaw()
-    let existingPlaylist = data.playlists.find((p) => p.id === playlist.id)
+    this.enqueueWrite((data) => {
+      let existingPlaylist = data.playlists.find((p) => p.id === playlist.id)
 
-    if (!existingPlaylist) {
-      existingPlaylist = { ...playlist, tracks: [] }
-      data.playlists.push(existingPlaylist)
-    }
+      if (!existingPlaylist) {
+        existingPlaylist = { ...playlist, tracks: [] }
+        data.playlists.push(existingPlaylist)
+      }
 
-    const trackIdx = existingPlaylist.tracks.findIndex((t) => t.id === track.id)
-    if (trackIdx >= 0) {
-      existingPlaylist.tracks[trackIdx] = track
-    } else {
-      existingPlaylist.tracks.push(track)
-    }
-
-    this.save(data)
+      const trackIdx = existingPlaylist.tracks.findIndex((t) => t.id === track.id)
+      if (trackIdx >= 0) {
+        existingPlaylist.tracks[trackIdx] = track
+      } else {
+        existingPlaylist.tracks.push(track)
+      }
+    })
   }
 
   deleteTracks(trackIds: string[]): void {
@@ -114,21 +163,56 @@ export class LibraryService {
     return data
   }
 
-  writeTrackOrder(playlistDir: string, playlistId: string): void {
+  writePlaylistInfo(playlistDir: string, playlistId: string): void {
     const data = this.loadRaw()
     const pl = data.playlists.find((p) => p.id === playlistId)
     if (!pl) return
     const downloaded = pl.tracks
       .filter((t) => t.filePath)
       .sort((a, b) => a.position - b.position)
-    const lines = downloaded.map((t, i) => {
-      let line = `${i + 1}) ${t.artist} - ${t.title}`
-      if (t.releaseDate) line += ` | Date: ${t.releaseDate}`
-      if (t.bitrate) line += ` | Bitrate: ${t.bitrate}kbps`
-      if (t.url) line += ` | URL: ${t.url}`
-      return line
-    })
-    writeFileSync(join(playlistDir, 'track-order.txt'), lines.join('\n'), 'utf-8')
+
+    const lines: string[] = []
+    lines.push(`# ${pl.title}`)
+    lines.push('')
+    lines.push(`**Channel:** ${pl.channelTitle}`)
+    lines.push(`**Tracks:** ${downloaded.length}`)
+    lines.push(`**Downloaded:** ${new Date().toLocaleDateString()}`)
+    lines.push('')
+    lines.push('---')
+    lines.push('')
+
+    // Summary table
+    lines.push('| # | Artist | Title | Duration | Date | Bitrate |')
+    lines.push('|---|--------|-------|----------|------|---------|')
+    for (const t of downloaded) {
+      const m = Math.floor(t.duration / 60)
+      const s = t.duration % 60
+      const dur = `${m}:${String(s).padStart(2, '0')}`
+      lines.push(`| ${t.position} | ${t.artist} | ${t.title} | ${dur} | ${t.releaseDate || '-'} | ${t.bitrate ? `${t.bitrate}kbps` : '-'} |`)
+    }
+    lines.push('')
+    lines.push('---')
+    lines.push('')
+
+    // Individual track sections with descriptions
+    for (const t of downloaded) {
+      lines.push(`## ${t.position}. ${t.artist} - ${t.title}`)
+      lines.push('')
+      if (t.releaseDate) lines.push(`- **Date:** ${t.releaseDate}`)
+      if (t.bitrate) lines.push(`- **Bitrate:** ${t.bitrate}kbps`)
+      if (t.url) lines.push(`- **URL:** ${t.url}`)
+      lines.push('')
+      if (t.description) {
+        lines.push('**Description:**')
+        lines.push('')
+        lines.push(t.description)
+        lines.push('')
+      }
+      lines.push('---')
+      lines.push('')
+    }
+
+    writeFileSync(join(playlistDir, 'playlist-info.md'), lines.join('\n'), 'utf-8')
   }
 
   deleteAll(): void {

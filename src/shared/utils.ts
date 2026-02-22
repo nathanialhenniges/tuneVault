@@ -1,0 +1,30 @@
+import type { DateFormat } from './models'
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+export function formatDate(raw: string, format: DateFormat): string {
+  // Normalize: YYYYMMDD -> YYYY-MM-DD
+  const normalized = raw.length === 8
+    ? `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`
+    : raw
+  const parts = normalized.split('-')
+  if (parts.length < 3) return raw
+  const [yyyy, mm, dd] = parts
+  switch (format) {
+    case 'MM/DD/YYYY': return `${mm}/${dd}/${yyyy}`
+    case 'DD/MM/YYYY': return `${dd}/${mm}/${yyyy}`
+    case 'YYYY-MM-DD': return normalized
+    case 'DD Mon YYYY': return `${dd} ${MONTHS[parseInt(mm, 10) - 1] || mm} ${yyyy}`
+    default: return normalized
+  }
+}
+
+export function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+export function sanitizeFilename(name: string): string {
+  return name.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim()
+}

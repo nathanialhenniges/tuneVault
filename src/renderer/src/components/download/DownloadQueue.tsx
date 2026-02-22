@@ -3,7 +3,7 @@ import { useDownloadStore } from '../../store/downloadStore'
 import { usePlaylistStore } from '../../store/playlistStore'
 import { useDownload } from '../../hooks/useDownload'
 import { DownloadItem } from './DownloadItem'
-import { ArrowPathIcon } from '@heroicons/react/24/outline'
+import { ArrowPathIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 
 export function DownloadQueue(): JSX.Element {
   const downloads = useDownloadStore((s) => s.downloads)
@@ -74,7 +74,8 @@ export function DownloadQueue(): JSX.Element {
       </div>
 
       {entries.length === 0 ? (
-        <div className="text-center py-20 text-text-muted">
+        <div className="flex flex-col items-center justify-center py-20 text-text-muted">
+          <ArrowDownTrayIcon className="w-12 h-12 mb-3 opacity-30" />
           <p className="text-lg">No downloads in progress</p>
           <p className="text-sm mt-1">Fetch a playlist and click "Download All" to start</p>
         </div>
@@ -89,8 +90,8 @@ export function DownloadQueue(): JSX.Element {
       )}
 
       {showRedownloadConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-bg-surface border border-border-default rounded-xl p-6 max-w-md mx-4 shadow-2xl">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+          <div className="glass-modal glass-border-float p-6 max-w-md mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
             <h3 className="text-lg font-semibold mb-2">Redownload All Tracks?</h3>
             <p className="text-sm text-text-secondary mb-6">
               This will re-download all {playlist?.tracks.length ?? 0} tracks and overwrite the existing files on disk.

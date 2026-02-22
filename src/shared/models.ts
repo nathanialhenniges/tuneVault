@@ -22,6 +22,7 @@ export interface Track {
   releaseDate?: string
   bitrate?: number
   url?: string
+  description?: string
 }
 
 export interface Playlist {
@@ -53,7 +54,7 @@ export interface DownloadProgress {
   percent: number
   speed: string
   eta: string
-  status: 'queued' | 'downloading' | 'converting' | 'tagging' | 'done' | 'skipped' | 'error'
+  status: 'queued' | 'downloading' | 'converting' | 'tagging' | 'done' | 'skipped' | 'error' | 'rate-limited'
   error?: string
 }
 

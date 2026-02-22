@@ -25,11 +25,12 @@ export function DownloadItem({ track, progress }: DownloadItemProps): JSX.Elemen
   const canCancel = status === 'queued' || status === 'downloading' || status === 'converting'
 
   return (
-    <div className="flex items-center gap-4 px-4 py-3 rounded-lg hover:bg-bg-surface-hover transition group">
+    <div className="flex items-center gap-4 px-4 py-3 rounded-[var(--radius-item)] hover:bg-glass-hover transition group">
       <img
         src={track.thumbnailUrl}
         alt=""
         className="w-10 h-10 rounded object-cover bg-bg-surface"
+        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
       />
 
       <div className="flex-1 min-w-0 space-y-1.5">

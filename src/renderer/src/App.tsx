@@ -1,10 +1,7 @@
 import { useCallback, useEffect } from 'react'
-import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { MemoryRouter } from 'react-router-dom'
 import { MainLayout } from './components/layout/MainLayout'
-import { PlaylistView } from './components/playlist/PlaylistView'
-import { DownloadQueue } from './components/download/DownloadQueue'
-import { LibraryView } from './components/library/LibraryView'
-import { SettingsView } from './components/settings/SettingsView'
+import { AnimatedRoutes } from './components/layout/AnimatedRoutes'
 import { PlayerBar } from './components/player/PlayerBar'
 import { useSettingsStore } from './store/settingsStore'
 import { useLibraryStore } from './store/libraryStore'
@@ -15,6 +12,7 @@ import { usePlayerStore } from './store/playerStore'
 import { useKonamiCode } from './hooks/useKonamiCode'
 import { useWolfModeStore } from './hooks/useWolfMode'
 import { DisclaimerModal } from './components/ui/DisclaimerModal'
+import { ToastContainer } from './components/ui/ToastContainer'
 
 export default function App(): JSX.Element {
   const loadSettings = useSettingsStore((s) => s.load)
@@ -64,17 +62,13 @@ export default function App(): JSX.Element {
 
   return (
     <MemoryRouter>
-      <div className="flex flex-col h-screen bg-bg-base text-text-primary transition-colors duration-200">
+      <div className="flex flex-col h-screen bg-transparent text-text-primary transition-colors duration-200">
         <MainLayout>
-          <Routes>
-            <Route path="/" element={<PlaylistView />} />
-            <Route path="/downloads" element={<DownloadQueue />} />
-            <Route path="/library" element={<LibraryView />} />
-            <Route path="/settings" element={<SettingsView />} />
-          </Routes>
+          <AnimatedRoutes />
         </MainLayout>
         <PlayerBar />
         <DisclaimerModal />
+        <ToastContainer />
       </div>
     </MemoryRouter>
   )

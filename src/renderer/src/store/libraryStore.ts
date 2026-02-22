@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { LibraryData, Track } from '../../../shared/models'
+import { toast } from './toastStore'
 
 interface LibraryState {
   library: LibraryData
@@ -29,6 +30,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     // Verify checks files on disk and removes missing tracks
     const library = await window.api.verifyLibrary()
     set({ library, loaded: true, selectedTrackIds: new Set() })
+    toast.info('Library loaded')
   },
 
   setSearchQuery: (query) => set({ searchQuery: query }),
@@ -81,11 +83,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
   deleteTracks: async (trackIds: string[]) => {
     await window.api.deleteTracks(trackIds)
+    toast.success(`Deleted ${trackIds.length} track${trackIds.length === 1 ? '' : 's'}`)
     await get().load()
   },
 
   deleteAll: async () => {
     await window.api.deleteAllLibrary()
+    toast.success('Library cleared')
     await get().load()
   },
 
