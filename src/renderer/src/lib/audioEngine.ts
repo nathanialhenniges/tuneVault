@@ -9,13 +9,28 @@ export class AudioEngine {
   private onEndCallback: AudioEventCallback | null = null
   private onSeekUpdate: SeekCallback | null = null
   private onLoadCallback: ((duration: number) => void) | null = null
+  private onErrorCallback: ((error: string) => void) | null = null
 
-  load(src: string): void {
+  load(
+    src: string,
+    callbacks?: {
+      onLoad?: (duration: number) => void
+      onEnd?: () => void
+      onSeek?: (seek: number) => void
+      onError?: (error: string) => void
+    }
+  ): void {
     this.unload()
+
+    // Register callbacks BEFORE creating Howl to avoid race conditions
+    if (callbacks?.onLoad) this.onLoadCallback = callbacks.onLoad
+    if (callbacks?.onEnd) this.onEndCallback = callbacks.onEnd
+    if (callbacks?.onSeek) this.onSeekUpdate = callbacks.onSeek
+    if (callbacks?.onError) this.onErrorCallback = callbacks.onError
 
     this.howl = new Howl({
       src: [src],
-      html5: false, // Use Web Audio for Electron compatibility
+      html5: true, // Use HTML5 Audio for local file:// URLs in Electron
       volume: 1,
       onend: () => {
         this.stopSeekUpdates()
@@ -24,6 +39,19 @@ export class AudioEngine {
       onload: () => {
         const duration = this.howl?.duration() ?? 0
         this.onLoadCallback?.(duration)
+      },
+      onloaderror: (_id, error) => {
+        console.error('Howler load error:', error)
+        this.onErrorCallback?.(String(error))
+      },
+      onplayerror: (_id, error) => {
+        console.error('Howler play error:', error)
+        // Attempt to unlock audio context and retry
+        if (this.howl) {
+          this.howl.once('unlock', () => {
+            this.howl?.play()
+          })
+        }
       }
     })
   }
@@ -63,24 +91,16 @@ export class AudioEngine {
     return this.howl?.playing() ?? false
   }
 
-  onEnd(callback: AudioEventCallback): void {
-    this.onEndCallback = callback
-  }
-
-  onLoad(callback: (duration: number) => void): void {
-    this.onLoadCallback = callback
-  }
-
-  onSeek(callback: SeekCallback): void {
-    this.onSeekUpdate = callback
-  }
-
   unload(): void {
     this.stopSeekUpdates()
     if (this.howl) {
       this.howl.unload()
       this.howl = null
     }
+    this.onEndCallback = null
+    this.onSeekUpdate = null
+    this.onLoadCallback = null
+    this.onErrorCallback = null
   }
 
   private startSeekUpdates(): void {

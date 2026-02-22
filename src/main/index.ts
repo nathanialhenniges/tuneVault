@@ -2,7 +2,6 @@ import { app, shell, BrowserWindow, globalShortcut, nativeImage } from 'electron
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllIpc } from './ipc/register'
-import { initUpdater } from './updater'
 import { createTray } from './tray'
 
 function getIconPath(): string {
@@ -72,7 +71,6 @@ app.whenReady().then(() => {
 
   const mainWindow = createWindow()
   registerAllIpc(mainWindow)
-  initUpdater(mainWindow)
   createTray(mainWindow)
 
   // Media key support
@@ -90,7 +88,6 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) {
       const w = createWindow()
       registerAllIpc(w)
-      initUpdater(w)
     }
   })
 })

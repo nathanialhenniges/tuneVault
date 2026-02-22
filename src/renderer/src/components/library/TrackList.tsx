@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import type { Track } from '../../../../shared/models'
 import { usePlayerStore } from '../../store/playerStore'
+import { useLibraryStore } from '../../store/libraryStore'
 
 interface TrackListProps {
   tracks: Track[]
@@ -15,37 +17,64 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const setQueue = usePlayerStore((s) => s.setQueue)
   const play = usePlayerStore((s) => s.play)
+  const selectedTrackIds = useLibraryStore((s) => s.selectedTrackIds)
+  const toggleTrackSelection = useLibraryStore((s) => s.toggleTrackSelection)
+  const deleteTracks = useLibraryStore((s) => s.deleteTracks)
+  const openFolder = useLibraryStore((s) => s.openFolder)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const handlePlay = (index: number): void => {
     setQueue(tracks, index)
     play()
   }
 
+  const handleDeleteOne = async (trackId: string): Promise<void> => {
+    await deleteTracks([trackId])
+    setConfirmDeleteId(null)
+  }
+
   return (
     <div className="space-y-0.5">
       {/* Header */}
       <div className="flex items-center gap-4 px-4 py-2 text-xs text-text-muted uppercase tracking-wider border-b border-border-default">
+        <span className="w-6"></span>
         <span className="w-8 text-right">#</span>
         <span className="flex-1">Title</span>
         <span className="w-32">Playlist</span>
         <span className="w-16 text-right">Duration</span>
+        <span className="w-20"></span>
       </div>
 
       {tracks.map((track, i) => {
         const isCurrent = currentTrack?.id === track.id
+        const isSelected = selectedTrackIds.has(track.id)
         return (
-          <button
+          <div
             key={track.id}
-            onClick={() => handlePlay(i)}
-            className={`w-full flex items-center gap-4 px-4 py-2.5 rounded-lg transition text-left ${
+            className={`flex items-center gap-4 px-4 py-2.5 rounded-lg transition group ${
               isCurrent
                 ? 'bg-accent-glow text-accent'
                 : 'hover:bg-bg-surface-hover'
             }`}
           >
-            <span className="w-8 text-right text-xs text-text-muted">{i + 1}</span>
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => toggleTrackSelection(track.id)}
+              className="w-3.5 h-3.5 rounded accent-[var(--accent)] cursor-pointer shrink-0"
+            />
 
-            <div className="flex items-center gap-3 flex-1 min-w-0">
+            <button
+              onClick={() => handlePlay(i)}
+              className="w-8 text-right text-xs text-text-muted hover:text-accent transition"
+            >
+              {i + 1}
+            </button>
+
+            <button
+              onClick={() => handlePlay(i)}
+              className="flex items-center gap-3 flex-1 min-w-0 text-left"
+            >
               <img
                 src={track.thumbnailUrl}
                 alt=""
@@ -55,13 +84,51 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
                 <p className="text-sm truncate">{track.title}</p>
                 <p className="text-xs text-text-muted truncate">{track.artist}</p>
               </div>
-            </div>
+            </button>
 
             <span className="w-32 text-xs text-text-muted truncate">{track.playlistTitle}</span>
             <span className="w-16 text-right text-xs text-text-muted">
               {formatDuration(track.duration)}
             </span>
-          </button>
+
+            <div className="w-20 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
+              {track.filePath && (
+                <button
+                  onClick={() => openFolder(track.filePath!)}
+                  className="text-xs text-text-muted hover:text-accent transition px-1.5 py-0.5 rounded"
+                  title="Show in folder"
+                >
+                  📁
+                </button>
+              )}
+              {confirmDeleteId === track.id ? (
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => handleDeleteOne(track.id)}
+                    className="text-xs text-red-500 hover:text-red-400 transition px-1 py-0.5"
+                    title="Confirm delete"
+                  >
+                    ✓
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteId(null)}
+                    className="text-xs text-text-muted hover:text-text-primary transition px-1 py-0.5"
+                    title="Cancel"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmDeleteId(track.id)}
+                  className="text-xs text-text-muted hover:text-red-500 transition px-1.5 py-0.5 rounded"
+                  title="Delete track"
+                >
+                  🗑
+                </button>
+              )}
+            </div>
+          </div>
         )
       })}
     </div>

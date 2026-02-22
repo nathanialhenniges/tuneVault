@@ -19,6 +19,9 @@ export const IpcChannels = {
   LIBRARY_GET_RESULT: 'library:get-result',
   LIBRARY_SAVE: 'library:save',
   LIBRARY_GET_TRACK_PATH: 'library:get-track-path',
+  LIBRARY_DELETE_TRACKS: 'library:delete-tracks',
+  LIBRARY_DELETE_ALL: 'library:delete-all',
+  LIBRARY_OPEN_FOLDER: 'library:open-folder',
 
   // Player
   PLAYER_GET_FILE_URL: 'player:get-file-url',
@@ -26,13 +29,5 @@ export const IpcChannels = {
   // Settings
   SETTINGS_GET: 'settings:get',
   SETTINGS_SET: 'settings:set',
-  SETTINGS_SELECT_DIRECTORY: 'settings:select-directory',
-
-  // Updater
-  UPDATER_CHECK: 'updater:check',
-  UPDATER_AVAILABLE: 'updater:available',
-  UPDATER_PROGRESS: 'updater:progress',
-  UPDATER_DOWNLOADED: 'updater:downloaded',
-  UPDATER_DOWNLOAD: 'updater:download',
-  UPDATER_INSTALL: 'updater:install'
+  SETTINGS_SELECT_DIRECTORY: 'settings:select-directory'
 } as const

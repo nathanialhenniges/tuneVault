@@ -1,6 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { IpcChannels } from '../../shared/ipc-channels'
 import { YtdlpService } from '../services/ytdlp.service'
+import { FfmpegService } from '../services/ffmpeg.service'
 import { LibraryService } from '../services/library.service'
 import type { DownloadRequest, Track } from '../../shared/models'
 
@@ -10,9 +11,11 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
   ipcMain.handle(IpcChannels.DOWNLOAD_START, async (_event, request: DownloadRequest) => {
     const { playlist, format, outputDir, concurrency } = request
     const ytdlp = new YtdlpService()
+    const ffmpeg = new FfmpegService()
     const library = new LibraryService()
 
     const queue = [...playlist.tracks]
+    const totalTracks = queue.length
     let active = 0
     let idx = 0
 
@@ -34,7 +37,34 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
             },
             signal: controller.signal
           })
-          .then((filePath) => {
+          .then(async (filePath) => {
+            // Tag with rich iTunes-compatible metadata
+            mainWindow.webContents.send(IpcChannels.DOWNLOAD_PROGRESS, {
+              trackId: track.id,
+              videoId: track.videoId,
+              percent: 100,
+              speed: '',
+              eta: '',
+              status: 'tagging'
+            })
+
+            try {
+              await ffmpeg.tagFile(filePath, {
+                title: track.title,
+                artist: track.artist,
+                album: playlist.title,
+                albumArtist: playlist.channelTitle || track.artist,
+                track: track.position,
+                totalTracks,
+                comment: `Downloaded from YouTube by TuneVault`,
+                thumbnailUrl: track.thumbnailUrl,
+                genre: 'Music'
+              })
+            } catch (err) {
+              console.error(`Failed to tag ${track.title}:`, err)
+              // Continue even if tagging fails — file is still downloaded
+            }
+
             const updatedTrack: Track = {
               ...track,
               filePath,

@@ -21,17 +21,24 @@ export function usePlayer(): void {
 
     const loadTrack = async (): Promise<void> => {
       const url = await window.api.getFileUrl(currentTrack.filePath!)
-      audioEngine.load(url)
-      audioEngine.onLoad((duration) => {
-        setDuration(duration)
-        audioEngine.play()
-        setIsPlaying(true)
-      })
-      audioEngine.onEnd(() => {
-        next()
-      })
-      audioEngine.onSeek((seek) => {
-        setSeek(seek)
+
+      // Pass all callbacks BEFORE loading to avoid race conditions
+      audioEngine.load(url, {
+        onLoad: (duration) => {
+          setDuration(duration)
+          audioEngine.play()
+          setIsPlaying(true)
+        },
+        onEnd: () => {
+          next()
+        },
+        onSeek: (seek) => {
+          setSeek(seek)
+        },
+        onError: (error) => {
+          console.error('Audio playback error:', error)
+          setIsPlaying(false)
+        }
       })
     }
 

@@ -39,6 +39,12 @@ const api = {
     ipcRenderer.invoke(IpcChannels.LIBRARY_GET),
   getTrackPath: (trackId: string): Promise<string | null> =>
     ipcRenderer.invoke(IpcChannels.LIBRARY_GET_TRACK_PATH, trackId),
+  deleteTracks: (trackIds: string[]): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.LIBRARY_DELETE_TRACKS, trackIds),
+  deleteAllLibrary: (): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.LIBRARY_DELETE_ALL),
+  openFolder: (filePath: string): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.LIBRARY_OPEN_FOLDER, filePath),
 
   // Player
   getFileUrl: (filePath: string): Promise<string> =>
@@ -51,29 +57,6 @@ const api = {
     ipcRenderer.invoke(IpcChannels.SETTINGS_SET, settings),
   selectDirectory: (): Promise<string | null> =>
     ipcRenderer.invoke(IpcChannels.SETTINGS_SELECT_DIRECTORY),
-
-  // Updater
-  checkForUpdate: (): Promise<unknown> =>
-    ipcRenderer.invoke(IpcChannels.UPDATER_CHECK),
-  downloadUpdate: (): Promise<unknown> =>
-    ipcRenderer.invoke(IpcChannels.UPDATER_DOWNLOAD),
-  installUpdate: (): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.UPDATER_INSTALL),
-  onUpdateAvailable: (callback: (info: unknown) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, info: unknown): void => callback(info)
-    ipcRenderer.on(IpcChannels.UPDATER_AVAILABLE, handler)
-    return () => ipcRenderer.removeListener(IpcChannels.UPDATER_AVAILABLE, handler)
-  },
-  onUpdateProgress: (callback: (progress: unknown) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, progress: unknown): void => callback(progress)
-    ipcRenderer.on(IpcChannels.UPDATER_PROGRESS, handler)
-    return () => ipcRenderer.removeListener(IpcChannels.UPDATER_PROGRESS, handler)
-  },
-  onUpdateDownloaded: (callback: () => void) => {
-    const handler = (): void => callback()
-    ipcRenderer.on(IpcChannels.UPDATER_DOWNLOADED, handler)
-    return () => ipcRenderer.removeListener(IpcChannels.UPDATER_DOWNLOADED, handler)
-  },
 
   // Tray / media key events
   onTrayTogglePlay: (callback: () => void) => {
