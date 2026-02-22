@@ -1,5 +1,6 @@
 import type { Track } from '../../../../shared/models'
 import { usePlayerStore } from '../../store/playerStore'
+import { Checkbox } from '../ui/Checkbox'
 
 interface TrackRowProps {
   track: Track
@@ -40,15 +41,7 @@ export function TrackRow({ track, index, tracks, selected, onToggleSelect }: Tra
       }`}
     >
       {onToggleSelect !== undefined && (
-        <input
-          type="checkbox"
-          checked={selected ?? false}
-          onChange={(e) => {
-            e.stopPropagation()
-            onToggleSelect()
-          }}
-          className="w-3.5 h-3.5 rounded accent-[var(--accent)] cursor-pointer shrink-0"
-        />
+        <Checkbox checked={selected ?? false} onChange={onToggleSelect} />
       )}
 
       <span

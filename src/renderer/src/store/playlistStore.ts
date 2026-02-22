@@ -44,7 +44,7 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
   recentPlaylists: loadRecentFromStorage(),
 
   fetchPlaylist: async (url: string) => {
-    set({ loading: true, error: null })
+    set({ loading: true, error: null, currentPlaylist: null })
     try {
       const playlist = await window.api.fetchPlaylist(url)
       set({ currentPlaylist: playlist, loading: false })

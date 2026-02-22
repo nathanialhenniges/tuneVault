@@ -77,6 +77,32 @@ export class LibraryService {
     this.save(data)
   }
 
+  /**
+   * Verify all tracks still exist on disk. Remove any whose files are missing.
+   * Returns the cleaned library data.
+   */
+  verify(): LibraryData {
+    const data = this.load()
+    let changed = false
+
+    for (const playlist of data.playlists) {
+      const before = playlist.tracks.length
+      playlist.tracks = playlist.tracks.filter((t) => {
+        if (!t.filePath) return false
+        return existsSync(t.filePath)
+      })
+      if (playlist.tracks.length !== before) changed = true
+    }
+
+    // Remove empty playlists
+    const beforePlaylists = data.playlists.length
+    data.playlists = data.playlists.filter((p) => p.tracks.length > 0)
+    if (data.playlists.length !== beforePlaylists) changed = true
+
+    if (changed) this.save(data)
+    return data
+  }
+
   deleteAll(): void {
     const data = this.load()
 

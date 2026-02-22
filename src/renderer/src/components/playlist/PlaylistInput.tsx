@@ -4,7 +4,7 @@ import { usePlaylistStore } from '../../store/playlistStore'
 export function PlaylistInput(): JSX.Element {
   const [url, setUrl] = useState('')
   const [showRecent, setShowRecent] = useState(false)
-  const { fetchPlaylist, loading, error, clearError, recentPlaylists } = usePlaylistStore()
+  const { fetchPlaylist, loading, error, clearError, clearPlaylist, recentPlaylists } = usePlaylistStore()
   const dropdownRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -13,6 +13,15 @@ export function PlaylistInput(): JSX.Element {
     if (!url.trim()) return
     setShowRecent(false)
     fetchPlaylist(url.trim())
+  }
+
+  const handleChange = (value: string): void => {
+    setUrl(value)
+    if (error) clearError()
+    // Clear playlist when input is emptied
+    if (!value.trim()) {
+      clearPlaylist()
+    }
   }
 
   const handleSelectRecent = (recentUrl: string): void => {
@@ -40,18 +49,16 @@ export function PlaylistInput(): JSX.Element {
             ref={inputRef}
             type="text"
             value={url}
-            onChange={(e) => {
-              setUrl(e.target.value)
-              if (error) clearError()
-            }}
+            disabled={loading}
+            onChange={(e) => handleChange(e.target.value)}
             onFocus={() => {
-              if (recentPlaylists.length > 0) setShowRecent(true)
+              if (recentPlaylists.length > 0 && !loading) setShowRecent(true)
             }}
             placeholder="Paste YouTube playlist URL..."
-            className="w-full bg-bg-surface border border-border-default rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition"
+            className="w-full bg-bg-surface border border-border-default rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed transition"
           />
 
-          {showRecent && recentPlaylists.length > 0 && (
+          {showRecent && !loading && recentPlaylists.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-bg-surface border border-border-default rounded-lg shadow-xl z-50 overflow-hidden">
               <div className="px-3 py-2 text-xs text-text-muted uppercase tracking-wider border-b border-border-default">
                 Recent Playlists

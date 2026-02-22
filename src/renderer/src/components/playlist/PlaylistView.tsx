@@ -3,6 +3,7 @@ import { PlaylistInput } from './PlaylistInput'
 import { TrackRow } from './TrackRow'
 import { usePlaylistStore } from '../../store/playlistStore'
 import { useDownload } from '../../hooks/useDownload'
+import { Checkbox } from '../ui/Checkbox'
 
 export function PlaylistView(): JSX.Element {
   const { currentPlaylist, loading } = usePlaylistStore()
@@ -90,12 +91,7 @@ export function PlaylistView(): JSX.Element {
           {/* Select all header */}
           <div className="flex items-center gap-3 px-4 py-1">
             <label className="flex items-center gap-2 text-xs text-text-muted cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={allSelected}
-                onChange={toggleAll}
-                className="w-3.5 h-3.5 rounded accent-[var(--accent)]"
-              />
+              <Checkbox checked={allSelected} onChange={toggleAll} />
               Select all
             </label>
             {selected.size > 0 && (

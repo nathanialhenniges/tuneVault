@@ -39,6 +39,8 @@ const api = {
     ipcRenderer.invoke(IpcChannels.LIBRARY_GET),
   getTrackPath: (trackId: string): Promise<string | null> =>
     ipcRenderer.invoke(IpcChannels.LIBRARY_GET_TRACK_PATH, trackId),
+  verifyLibrary: (): Promise<LibraryData> =>
+    ipcRenderer.invoke(IpcChannels.LIBRARY_VERIFY),
   deleteTracks: (trackIds: string[]): Promise<void> =>
     ipcRenderer.invoke(IpcChannels.LIBRARY_DELETE_TRACKS, trackIds),
   deleteAllLibrary: (): Promise<void> =>

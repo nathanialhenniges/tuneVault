@@ -26,7 +26,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   selectedTrackIds: new Set(),
 
   load: async () => {
-    const library = await window.api.getLibrary()
+    // Verify checks files on disk and removes missing tracks
+    const library = await window.api.verifyLibrary()
     set({ library, loaded: true, selectedTrackIds: new Set() })
   },
 

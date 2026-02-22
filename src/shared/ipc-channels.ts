@@ -22,6 +22,7 @@ export const IpcChannels = {
   LIBRARY_DELETE_TRACKS: 'library:delete-tracks',
   LIBRARY_DELETE_ALL: 'library:delete-all',
   LIBRARY_OPEN_FOLDER: 'library:open-folder',
+  LIBRARY_VERIFY: 'library:verify',
 
   // Player
   PLAYER_GET_FILE_URL: 'player:get-file-url',

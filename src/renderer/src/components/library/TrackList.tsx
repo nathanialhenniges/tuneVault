@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Track } from '../../../../shared/models'
 import { usePlayerStore } from '../../store/playerStore'
 import { useLibraryStore } from '../../store/libraryStore'
+import { Checkbox } from '../ui/Checkbox'
 
 interface TrackListProps {
   tracks: Track[]
@@ -57,12 +58,7 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
                 : 'hover:bg-bg-surface-hover'
             }`}
           >
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={() => toggleTrackSelection(track.id)}
-              className="w-3.5 h-3.5 rounded accent-[var(--accent)] cursor-pointer shrink-0"
-            />
+            <Checkbox checked={isSelected} onChange={() => toggleTrackSelection(track.id)} />
 
             <button
               onClick={() => handlePlay(i)}

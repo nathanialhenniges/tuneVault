@@ -27,6 +27,10 @@ export function registerLibraryIpc(): void {
     library.deleteAll()
   })
 
+  ipcMain.handle(IpcChannels.LIBRARY_VERIFY, async () => {
+    return library.verify()
+  })
+
   ipcMain.handle(IpcChannels.LIBRARY_OPEN_FOLDER, async (_event, filePath: string) => {
     shell.showItemInFolder(filePath)
   })
