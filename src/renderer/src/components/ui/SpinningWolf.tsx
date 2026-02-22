@@ -8,8 +8,8 @@ export function SpinningWolf({ size = 80 }: { size?: number }): JSX.Element {
       width={size}
       height={size}
       style={{
-        animation: 'wolfOiia 1.2s ease-in-out infinite',
-        transformOrigin: 'center bottom'
+        animation: 'wolfOiia 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+        transformOrigin: 'center center'
       }}
     />
   )
