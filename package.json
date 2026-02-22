@@ -1,7 +1,7 @@
 {
   "name": "tunevault",
   "version": "1.0.0",
-  "description": "Download YouTube music playlists as high-quality audio files with a built-in player",
+  "description": "A desktop app to download YouTube playlists as high-quality audio (FLAC, MP3, Opus) with iTunes metadata tagging, a built-in music player, and customizable track ordering.",
   "main": "./out/main/index.js",
   "author": "nathanialhenniges",
   "license": "MIT",
