@@ -55,7 +55,7 @@ const LibraryTrackRow = memo(function LibraryTrackRow({
       className={`flex items-center gap-4 px-4 py-2.5 rounded-[var(--radius-item)] transition group ${
         isCurrent
           ? 'bg-accent/10 text-accent border-l-2 border-accent'
-          : 'hover:bg-glass-hover'
+          : 'hover:bg-glass-hover hover:translate-x-0.5'
       }`}
     >
       <Checkbox checked={isSelected} onChange={() => onToggleSelection(track.id, index)} onClick={handleCheckboxClick} />
@@ -74,6 +74,8 @@ const LibraryTrackRow = memo(function LibraryTrackRow({
         <img
           src={track.thumbnailUrl}
           alt=""
+          loading="lazy"
+          decoding="async"
           className="w-9 h-9 rounded object-cover bg-bg-surface"
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
         />
@@ -179,7 +181,7 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
     count: tracks.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 45,
-    overscan: 10
+    overscan: 5
   })
 
   const handlePlay = useCallback((index: number): void => {

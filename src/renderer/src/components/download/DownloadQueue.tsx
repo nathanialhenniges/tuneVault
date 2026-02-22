@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useDownloadStore } from '../../store/downloadStore'
 import { usePlaylistStore } from '../../store/playlistStore'
 import { useDownload } from '../../hooks/useDownload'
@@ -15,12 +15,18 @@ export function DownloadQueue(): JSX.Element {
   const [showRedownloadConfirm, setShowRedownloadConfirm] = useState(false)
 
   const entries = Array.from(downloads.entries())
-  const doneCount = entries.filter(([, d]) => d.status === 'done').length
-  const skippedCount = entries.filter(([, d]) => d.status === 'skipped').length
-  const errorCount = entries.filter(([, d]) => d.status === 'error').length
-  const activeCount = entries.filter(
-    ([, d]) => d.status !== 'done' && d.status !== 'skipped' && d.status !== 'error'
-  ).length
+
+  // Single-pass stats computation
+  const { doneCount, skippedCount, errorCount, activeCount } = useMemo(() => {
+    let done = 0, skipped = 0, error = 0, active = 0
+    for (const [, d] of entries) {
+      if (d.status === 'done') done++
+      else if (d.status === 'skipped') skipped++
+      else if (d.status === 'error') error++
+      else active++
+    }
+    return { doneCount: done, skippedCount: skipped, errorCount: error, activeCount: active }
+  }, [entries])
 
   const handleRedownload = async (): Promise<void> => {
     setShowRedownloadConfirm(false)
@@ -32,7 +38,7 @@ export function DownloadQueue(): JSX.Element {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Downloads</h2>
+          <h2 className="text-xl font-semibold font-display">Downloads</h2>
           {entries.length > 0 && (
             <p className="text-sm text-text-secondary mt-1">
               {doneCount} of {entries.length} complete
@@ -75,8 +81,11 @@ export function DownloadQueue(): JSX.Element {
 
       {entries.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-text-muted">
-          <ArrowDownTrayIcon className="w-12 h-12 mb-3 opacity-30" />
-          <p className="text-lg">No downloads in progress</p>
+          <div className="relative mb-3">
+            <div className="absolute inset-0 rounded-full blur-xl opacity-30" style={{ background: 'var(--accent)' }} />
+            <ArrowDownTrayIcon className="relative w-12 h-12 opacity-30" style={{ animation: 'textPulse 2s ease-in-out infinite' }} />
+          </div>
+          <p className="text-lg font-display">No downloads in progress</p>
           <p className="text-sm mt-1">Fetch a playlist and click "Download All" to start</p>
         </div>
       ) : (

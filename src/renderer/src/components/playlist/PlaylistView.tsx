@@ -44,7 +44,7 @@ function VirtualizedTrackList({
     count: tracks.length,
     getScrollElement: () => trackListRef.current,
     estimateSize: () => 48,
-    overscan: 10
+    overscan: 5
   })
 
   return (
@@ -148,14 +148,14 @@ export function PlaylistView(): JSX.Element {
     return { active, done, total }
   }, [downloads])
 
-  const toggleOne = (trackId: string): void => {
+  const toggleOne = useCallback((trackId: string): void => {
     setSelected((prev) => {
       const next = new Set(prev)
       if (next.has(trackId)) next.delete(trackId)
       else next.add(trackId)
       return next
     })
-  }
+  }, [])
 
   const toggleAll = (): void => {
     if (allSelected) {
@@ -184,7 +184,7 @@ export function PlaylistView(): JSX.Element {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold mb-4">Fetch Playlist</h2>
+        <h2 className="text-xl font-semibold mb-4 font-display">Fetch Playlist</h2>
         <PlaylistInput />
       </div>
 
@@ -196,8 +196,11 @@ export function PlaylistView(): JSX.Element {
 
       {!loading && !currentPlaylist && (
         <div className="flex flex-col items-center justify-center py-20 text-text-muted">
-          <MusicalNoteIcon className="w-12 h-12 mb-3 opacity-30" />
-          <p className="text-base">Paste a YouTube playlist URL to get started</p>
+          <div className="relative mb-3">
+            <div className="absolute inset-0 rounded-full blur-xl opacity-30" style={{ background: 'var(--accent)' }} />
+            <MusicalNoteIcon className="relative w-12 h-12 opacity-30" style={{ animation: 'textPulse 2s ease-in-out infinite' }} />
+          </div>
+          <p className="text-base font-display">Paste a YouTube playlist URL to get started</p>
           <p className="text-sm mt-1 opacity-60">Your tracks will appear here</p>
         </div>
       )}
@@ -235,6 +238,8 @@ export function PlaylistView(): JSX.Element {
               <img
                 src={currentPlaylist.thumbnailUrl}
                 alt=""
+                loading="lazy"
+                decoding="async"
                 className="w-16 h-16 object-cover"
                 style={{ borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-glass-lg)' }}
               />

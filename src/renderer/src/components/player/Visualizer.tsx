@@ -10,12 +10,26 @@ interface VisualizerProps {
 const ACCENT = '#f97316'
 const ACCENT_DIM = 'rgba(249, 115, 22, 0.3)'
 
-function drawBars(ctx: CanvasRenderingContext2D, data: Uint8Array, w: number, h: number): void {
+function drawBars(
+  ctx: CanvasRenderingContext2D,
+  data: Uint8Array,
+  w: number,
+  h: number,
+  gradientCache: { gradient: CanvasGradient; w: number; h: number } | null,
+  setGradientCache: (cache: { gradient: CanvasGradient; w: number; h: number }) => void
+): void {
   const bins = data.length
   const barW = w / bins
-  const gradient = ctx.createLinearGradient(0, h, 0, 0)
-  gradient.addColorStop(0, ACCENT_DIM)
-  gradient.addColorStop(1, ACCENT)
+
+  let gradient: CanvasGradient
+  if (gradientCache && gradientCache.w === w && gradientCache.h === h) {
+    gradient = gradientCache.gradient
+  } else {
+    gradient = ctx.createLinearGradient(0, h, 0, 0)
+    gradient.addColorStop(0, ACCENT_DIM)
+    gradient.addColorStop(1, ACCENT)
+    setGradientCache({ gradient, w, h })
+  }
 
   ctx.fillStyle = gradient
   for (let i = 0; i < bins; i++) {
@@ -42,20 +56,35 @@ function drawCircular(ctx: CanvasRenderingContext2D, data: Uint8Array, w: number
   const cy = h / 2
   const radius = Math.min(cx, cy) * 0.4
   const bins = data.length
+  const maxBarH = Math.min(cx, cy) - radius
 
   ctx.lineWidth = 2
+
+  // Quantize alpha into 8 buckets and batch strokes
+  const buckets: { x1: number; y1: number; x2: number; y2: number }[][] = Array.from({ length: 8 }, () => [])
+
   for (let i = 0; i < bins; i++) {
     const angle = (i / bins) * Math.PI * 2 - Math.PI / 2
-    const barH = (data[i] / 255) * (Math.min(cx, cy) - radius)
+    const barH = (data[i] / 255) * maxBarH
     const x1 = cx + Math.cos(angle) * radius
     const y1 = cy + Math.sin(angle) * radius
     const x2 = cx + Math.cos(angle) * (radius + barH)
     const y2 = cy + Math.sin(angle) * (radius + barH)
     const alpha = 0.3 + (data[i] / 255) * 0.7
+    const bucket = Math.min(7, Math.floor(alpha * 8))
+    buckets[bucket].push({ x1, y1, x2, y2 })
+  }
+
+  for (let b = 0; b < 8; b++) {
+    const lines = buckets[b]
+    if (lines.length === 0) continue
+    const alpha = (b + 0.5) / 8
     ctx.strokeStyle = `rgba(249, 115, 22, ${alpha})`
     ctx.beginPath()
-    ctx.moveTo(x1, y1)
-    ctx.lineTo(x2, y2)
+    for (const { x1, y1, x2, y2 } of lines) {
+      ctx.moveTo(x1, y1)
+      ctx.lineTo(x2, y2)
+    }
     ctx.stroke()
   }
 }
@@ -64,6 +93,7 @@ export function Visualizer({ enabled, style }: VisualizerProps): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef<number>(0)
   const containerRef = useRef<HTMLDivElement>(null)
+  const gradientCacheRef = useRef<{ gradient: CanvasGradient; w: number; h: number } | null>(null)
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -90,7 +120,7 @@ export function Visualizer({ enabled, style }: VisualizerProps): JSX.Element {
       const data = new Uint8Array(analyser.frequencyBinCount)
       analyser.getByteFrequencyData(data)
       if (style === 'circular') drawCircular(ctx, data, w, h)
-      else drawBars(ctx, data, w, h)
+      else drawBars(ctx, data, w, h, gradientCacheRef.current, (c) => { gradientCacheRef.current = c })
     }
 
     rafRef.current = requestAnimationFrame(draw)
@@ -116,6 +146,8 @@ export function Visualizer({ enabled, style }: VisualizerProps): JSX.Element {
       canvas.style.height = `${height}px`
       const ctx = canvas.getContext('2d')
       if (ctx) ctx.scale(devicePixelRatio, devicePixelRatio)
+      // Invalidate gradient cache on resize
+      gradientCacheRef.current = null
     })
     observer.observe(container)
     return () => observer.disconnect()

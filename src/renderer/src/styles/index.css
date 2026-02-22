@@ -97,6 +97,9 @@ select:focus-visible,
   /* Seek track */
   --seek-track-bg: rgba(0, 0, 0, 0.08);
   --seek-track-hover: rgba(0, 0, 0, 0.12);
+
+  /* Display font */
+  --font-display: 'DM Sans Variable', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 /* ── Obsidian dark theme ─────────────────────────────────── */
@@ -153,6 +156,8 @@ select:focus-visible,
   /* Seek track — dark */
   --seek-track-bg: rgba(255, 255, 255, 0.06);
   --seek-track-hover: rgba(255, 255, 255, 0.1);
+
+  --font-display: 'DM Sans Variable', 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 body {
@@ -440,6 +445,34 @@ body::before {
 
 .no-drag {
   -webkit-app-region: no-drag;
+}
+
+/* Display font utility */
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Button press micro-interaction */
+.btn-press:active {
+  transform: scale(0.95);
+  transition: transform 0.07s ease;
+}
+
+/* Download shimmer animation */
+@keyframes downloadShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.download-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: downloadShimmer 1.5s ease-in-out infinite;
 }
 
 /* Range input accent */

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { useLibraryStore } from '../../store/libraryStore'
+import { useShallow } from 'zustand/react/shallow'
 import { SearchBar } from './SearchBar'
 import { TrackList } from './TrackList'
 import {
@@ -16,8 +17,7 @@ import {
 import { useSettingsStore } from '../../store/settingsStore'
 import { useSyncStore } from '../../store/syncStore'
 import { useLocation } from 'react-router-dom'
-import Markdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { MarkdownViewer } from './MarkdownViewer'
 import { useFocusTrap } from '../../hooks/useFocusTrap'
 
 function FocusTrapModal({ children, onClose }: { children: React.ReactNode; onClose: () => void }): JSX.Element {
@@ -37,7 +37,17 @@ function FocusTrapModal({ children, onClose }: { children: React.ReactNode; onCl
 }
 
 export function LibraryView(): JSX.Element {
-  const { loaded, load, library, selectedTrackIds, selectAllTracks, clearSelection, deleteTracks, deleteAll, openFolder } = useLibraryStore()
+  const { load, selectAllTracks, clearSelection, deleteTracks, deleteAll, openFolder } = useLibraryStore(useShallow((s) => ({
+    load: s.load,
+    selectAllTracks: s.selectAllTracks,
+    clearSelection: s.clearSelection,
+    deleteTracks: s.deleteTracks,
+    deleteAll: s.deleteAll,
+    openFolder: s.openFolder
+  })))
+  const loaded = useLibraryStore((s) => s.loaded)
+  const library = useLibraryStore((s) => s.library)
+  const selectedTrackIds = useLibraryStore((s) => s.selectedTrackIds)
   const searchQuery = useLibraryStore((s) => s.searchQuery)
   const sortBy = useLibraryStore((s) => s.sortBy)
   const sortDirection = useLibraryStore((s) => s.sortDirection)
@@ -111,7 +121,7 @@ export function LibraryView(): JSX.Element {
       <div>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-xl font-semibold">Library</h2>
+            <h2 className="text-xl font-semibold font-display">Library</h2>
             <p className="text-sm text-text-secondary mt-1">
               {tracks.length} tracks · {library.playlists.length} playlists
             </p>
@@ -278,8 +288,11 @@ export function LibraryView(): JSX.Element {
 
       {tracks.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-text-muted">
-          <MusicalNoteIcon className="w-12 h-12 mb-3 opacity-30" />
-          <p className="text-lg">Your library is empty</p>
+          <div className="relative mb-3">
+            <div className="absolute inset-0 rounded-full blur-xl opacity-30" style={{ background: 'var(--accent)' }} />
+            <MusicalNoteIcon className="relative w-12 h-12 opacity-30" style={{ animation: 'textPulse 2s ease-in-out infinite' }} />
+          </div>
+          <p className="text-lg font-display">Your library is empty</p>
           <p className="text-sm mt-1">Download some playlists to get started</p>
         </div>
       ) : (
@@ -335,7 +348,7 @@ export function LibraryView(): JSX.Element {
 
             <div className="flex-1 overflow-y-auto min-h-0 bg-glass-hover border border-[var(--glass-border-edge)] rounded-lg p-5">
               <div className="markdown-prose">
-                <Markdown remarkPlugins={[remarkGfm]}>{playlistInfoContent}</Markdown>
+                <MarkdownViewer>{playlistInfoContent}</MarkdownViewer>
               </div>
             </div>
 

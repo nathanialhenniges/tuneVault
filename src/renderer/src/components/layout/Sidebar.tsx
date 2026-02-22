@@ -19,18 +19,20 @@ export function Sidebar(): JSX.Element {
   const navigate = useNavigate()
   const location = useLocation()
   const library = useLibraryStore((s) => s.library)
-  const downloads = useDownloadStore((s) => s.downloads)
-
-  const activeDownloads = Array.from(downloads.values()).filter(
-    (d) => d.status !== 'done' && d.status !== 'skipped' && d.status !== 'error'
-  ).length
+  const activeDownloads = useDownloadStore((s) => {
+    let count = 0
+    s.downloads.forEach((d) => {
+      if (d.status !== 'done' && d.status !== 'skipped' && d.status !== 'error') count++
+    })
+    return count
+  })
 
   const recentPlaylists = library.playlists.slice(0, 5)
 
   return (
     <aside className="relative w-48 glass-chrome glass-border-sidebar flex flex-col transition-colors duration-200">
       <div className="drag-region h-12 flex items-center pl-[72px] pr-4 border-b border-[var(--glass-border-edge)]">
-        <h1 className="text-sm font-bold tracking-wide text-accent no-drag">TuneVault</h1>
+        <h1 className="text-sm font-bold tracking-wide text-accent no-drag font-display">TuneVault</h1>
       </div>
 
       <nav className="flex-1 py-2 px-2">

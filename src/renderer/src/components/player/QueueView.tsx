@@ -123,6 +123,8 @@ export function QueueView({ open, onClose }: QueueViewProps): JSX.Element | null
                   <img
                     src={track.thumbnailUrl}
                     alt=""
+                    loading="lazy"
+                    decoding="async"
                     className="w-8 h-8 rounded object-cover bg-bg-surface"
                   />
                   <div className="min-w-0 flex-1">

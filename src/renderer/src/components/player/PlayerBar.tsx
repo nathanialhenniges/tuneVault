@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, memo } from 'react'
 import { usePlayerStore } from '../../store/playerStore'
+import { useShallow } from 'zustand/react/shallow'
 import { audioEngine } from '../../lib/audioEngine'
 import { NowPlaying } from './NowPlaying'
 import { VolumeControl } from './VolumeControl'
@@ -35,47 +36,19 @@ function RepeatIcon({ mode }: { mode: RepeatMode }): JSX.Element {
   )
 }
 
-export function PlayerBar(): JSX.Element {
-  const [showQueue, setShowQueue] = useState(false)
+const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2]
+const CROSSFADE_OPTIONS = [0, 2, 4, 6]
+const VISUALIZER_STYLES: { value: VisualizerStyle; label: string }[] = [
+  { value: 'bars', label: 'Bars' },
+  { value: 'waveform', label: 'Waveform' },
+  { value: 'circular', label: 'Circular' }
+]
+
+const SeekBar = memo(function SeekBar() {
   const [isSeeking, setIsSeeking] = useState(false)
   const seekValueRef = useRef(0)
-
-  const isPlaying = usePlayerStore((s) => s.isPlaying)
-  const togglePlay = usePlayerStore((s) => s.togglePlay)
-  const next = usePlayerStore((s) => s.next)
-  const prev = usePlayerStore((s) => s.prev)
   const seek = usePlayerStore((s) => s.seek)
   const duration = usePlayerStore((s) => s.duration)
-  const shuffle = usePlayerStore((s) => s.shuffle)
-  const repeat = usePlayerStore((s) => s.repeat)
-  const toggleShuffle = usePlayerStore((s) => s.toggleShuffle)
-  const setRepeat = usePlayerStore((s) => s.setRepeat)
-  const currentTrack = usePlayerStore((s) => s.currentTrack)
-
-  const playbackRate = usePlayerStore((s) => s.playbackRate)
-  const setPlaybackRate = usePlayerStore((s) => s.setPlaybackRate)
-  const crossfadeDuration = usePlayerStore((s) => s.crossfadeDuration)
-  const setCrossfadeDuration = usePlayerStore((s) => s.setCrossfadeDuration)
-  const [showCrossfadeMenu, setShowCrossfadeMenu] = useState(false)
-  const [showVisualizerMenu, setShowVisualizerMenu] = useState(false)
-
-  const visualizerEnabled = useVisualizerStore((s) => s.enabled)
-  const toggleVisualizer = useVisualizerStore((s) => s.toggle)
-  const setVisualizerStyle = useVisualizerStore((s) => s.setStyle)
-
-  const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2]
-  const CROSSFADE_OPTIONS = [0, 2, 4, 6]
-  const VISUALIZER_STYLES: { value: VisualizerStyle; label: string }[] = [
-    { value: 'bars', label: 'Bars' },
-    { value: 'waveform', label: 'Waveform' },
-    { value: 'circular', label: 'Circular' }
-  ]
-
-  const cycleSpeed = (): void => {
-    const idx = SPEED_OPTIONS.indexOf(playbackRate)
-    const next = SPEED_OPTIONS[(idx + 1) % SPEED_OPTIONS.length]
-    setPlaybackRate(next)
-  }
 
   const handleSeekInput = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const time = parseFloat(e.target.value)
@@ -87,6 +60,63 @@ export function PlayerBar(): JSX.Element {
   const handleSeekCommit = (): void => {
     audioEngine.seek(seekValueRef.current)
     setIsSeeking(false)
+  }
+
+  return (
+    <div className="flex items-center gap-2 w-full max-w-lg">
+      <span className="text-xs text-text-muted w-10 text-right">{formatTime(seek)}</span>
+      <input
+        type="range"
+        min={0}
+        max={duration || 1}
+        step={0.1}
+        value={isSeeking ? seekValueRef.current : seek}
+        onChange={handleSeekInput}
+        onMouseUp={handleSeekCommit}
+        onTouchEnd={handleSeekCommit}
+        className="flex-1 h-1 appearance-none seek-track rounded-full cursor-pointer"
+        aria-label="Seek"
+      />
+      <span className="text-xs text-text-muted w-10">{formatTime(duration)}</span>
+    </div>
+  )
+})
+
+export function PlayerBar(): JSX.Element {
+  const [showQueue, setShowQueue] = useState(false)
+  const [showCrossfadeMenu, setShowCrossfadeMenu] = useState(false)
+  const [showVisualizerMenu, setShowVisualizerMenu] = useState(false)
+
+  const {
+    isPlaying, togglePlay, next, prev, shuffle, repeat,
+    toggleShuffle, setRepeat, currentTrack,
+    playbackRate, setPlaybackRate, crossfadeDuration, setCrossfadeDuration
+  } = usePlayerStore(useShallow((s) => ({
+    isPlaying: s.isPlaying,
+    togglePlay: s.togglePlay,
+    next: s.next,
+    prev: s.prev,
+    shuffle: s.shuffle,
+    repeat: s.repeat,
+    toggleShuffle: s.toggleShuffle,
+    setRepeat: s.setRepeat,
+    currentTrack: s.currentTrack,
+    playbackRate: s.playbackRate,
+    setPlaybackRate: s.setPlaybackRate,
+    crossfadeDuration: s.crossfadeDuration,
+    setCrossfadeDuration: s.setCrossfadeDuration
+  })))
+
+  const { visualizerEnabled, toggleVisualizer, setVisualizerStyle } = useVisualizerStore(useShallow((s) => ({
+    visualizerEnabled: s.enabled,
+    toggleVisualizer: s.toggle,
+    setVisualizerStyle: s.setStyle
+  })))
+
+  const cycleSpeed = (): void => {
+    const idx = SPEED_OPTIONS.indexOf(playbackRate)
+    const next = SPEED_OPTIONS[(idx + 1) % SPEED_OPTIONS.length]
+    setPlaybackRate(next)
   }
 
   const cycleRepeat = (): void => {
@@ -119,7 +149,7 @@ export function PlayerBar(): JSX.Element {
           <button
             onClick={togglePlay}
             disabled={!currentTrack}
-            className="w-9 h-9 flex items-center justify-center bg-accent text-text-inverted rounded-full hover:bg-accent-hover hover:scale-105 disabled:opacity-50 transition shadow-[0_0_12px_rgba(249,115,22,0.3)]"
+            className="btn-press w-9 h-9 flex items-center justify-center bg-accent text-text-inverted rounded-full hover:bg-accent-hover hover:scale-105 disabled:opacity-50 transition shadow-[0_0_12px_rgba(249,115,22,0.3)]"
             aria-label={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? <PauseIcon className="w-5 h-5" /> : <PlayIcon className="w-5 h-5" />}
@@ -140,22 +170,7 @@ export function PlayerBar(): JSX.Element {
         </div>
 
         {/* Seek bar */}
-        <div className="flex items-center gap-2 w-full max-w-lg">
-          <span className="text-xs text-text-muted w-10 text-right">{formatTime(seek)}</span>
-          <input
-            type="range"
-            min={0}
-            max={duration || 1}
-            step={0.1}
-            value={isSeeking ? seekValueRef.current : seek}
-            onChange={handleSeekInput}
-            onMouseUp={handleSeekCommit}
-            onTouchEnd={handleSeekCommit}
-            className="flex-1 h-1 appearance-none seek-track rounded-full cursor-pointer"
-            aria-label="Seek"
-          />
-          <span className="text-xs text-text-muted w-10">{formatTime(duration)}</span>
-        </div>
+        <SeekBar />
       </div>
 
       <div className="flex items-center gap-2 w-64 justify-end relative">

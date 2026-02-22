@@ -13,6 +13,9 @@ function applyTheme(theme: 'dark' | 'light' | 'system'): void {
   }
 }
 
+let mqlListener: ((e: MediaQueryListEvent) => void) | null = null
+const mql = window.matchMedia('(prefers-color-scheme: dark)')
+
 interface SettingsState {
   settings: AppSettings
   loaded: boolean
@@ -30,13 +33,17 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     applyTheme(settings.theme)
     set({ settings, loaded: true })
 
-    // Listen for OS theme changes when set to 'system'
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    // Remove previous listener before adding new one
+    if (mqlListener) {
+      mql.removeEventListener('change', mqlListener)
+    }
+    mqlListener = () => {
       const current = useSettingsStore.getState().settings
       if (current.theme === 'system') {
         applyTheme('system')
       }
-    })
+    }
+    mql.addEventListener('change', mqlListener)
   },
 
   update: async (partial) => {

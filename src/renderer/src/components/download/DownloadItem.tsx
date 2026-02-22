@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { DownloadProgress, Track } from '../../../../shared/models'
 import { ProgressBar } from './ProgressBar'
 import { useDownloadStore } from '../../store/downloadStore'
@@ -18,7 +19,7 @@ const statusLabels: Record<string, string> = {
   error: 'Error'
 }
 
-export function DownloadItem({ track, progress }: DownloadItemProps): JSX.Element {
+export const DownloadItem = memo(function DownloadItem({ track, progress }: DownloadItemProps): JSX.Element {
   const cancelOne = useDownloadStore((s) => s.cancelOne)
   const status = progress?.status ?? 'queued'
   const percent = progress?.percent ?? 0
@@ -29,6 +30,8 @@ export function DownloadItem({ track, progress }: DownloadItemProps): JSX.Elemen
       <img
         src={track.thumbnailUrl}
         alt=""
+        loading="lazy"
+        decoding="async"
         className="w-10 h-10 rounded object-cover bg-bg-surface"
         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
       />
@@ -79,4 +82,13 @@ export function DownloadItem({ track, progress }: DownloadItemProps): JSX.Elemen
       )}
     </div>
   )
-}
+}, (prev, next) => {
+  return (
+    prev.track.id === next.track.id &&
+    prev.progress?.status === next.progress?.status &&
+    prev.progress?.percent === next.progress?.percent &&
+    prev.progress?.speed === next.progress?.speed &&
+    prev.progress?.eta === next.progress?.eta &&
+    prev.progress?.error === next.progress?.error
+  )
+})
