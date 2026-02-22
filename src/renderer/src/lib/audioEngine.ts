@@ -5,11 +5,13 @@ type SeekCallback = (seek: number) => void
 
 export class AudioEngine {
   private howl: Howl | null = null
+  private soundId: number | null = null
   private seekInterval: ReturnType<typeof setInterval> | null = null
   private onEndCallback: AudioEventCallback | null = null
   private onSeekUpdate: SeekCallback | null = null
   private onLoadCallback: ((duration: number) => void) | null = null
   private onErrorCallback: ((error: string) => void) | null = null
+  private _playing = false
 
   load(
     src: string,
@@ -30,11 +32,16 @@ export class AudioEngine {
 
     this.howl = new Howl({
       src: [src],
-      html5: true, // Use HTML5 Audio for local file:// URLs in Electron
+      html5: false, // Use Web Audio API — fully buffers the file so seeking always works
       volume: 1,
       onend: () => {
+        this._playing = false
         this.stopSeekUpdates()
         this.onEndCallback?.()
+      },
+      onplay: (id) => {
+        this.soundId = id
+        this._playing = true
       },
       onload: () => {
         const duration = this.howl?.duration() ?? 0
@@ -57,22 +64,48 @@ export class AudioEngine {
   }
 
   play(): void {
-    this.howl?.play()
+    if (!this.howl) return
+    if (this.soundId != null) {
+      this.howl.play(this.soundId)
+    } else {
+      this.soundId = this.howl.play()
+    }
+    this._playing = true
     this.startSeekUpdates()
   }
 
   pause(): void {
-    this.howl?.pause()
+    if (this.howl && this.soundId != null) {
+      this.howl.pause(this.soundId)
+    } else {
+      this.howl?.pause()
+    }
+    this._playing = false
     this.stopSeekUpdates()
   }
 
   stop(): void {
     this.howl?.stop()
+    this._playing = false
     this.stopSeekUpdates()
   }
 
   seek(time: number): void {
-    this.howl?.seek(time)
+    if (!this.howl) return
+    if (this.soundId != null) {
+      this.howl.seek(time, this.soundId)
+    } else {
+      this.howl.seek(time)
+    }
+    if (this._playing) {
+      // Re-ensure playback continues after seeking with html5 audio
+      if (this.soundId != null) {
+        this.howl.play(this.soundId)
+      } else {
+        this.howl.play()
+      }
+      this.startSeekUpdates()
+    }
   }
 
   setVolume(volume: number): void {
@@ -97,6 +130,8 @@ export class AudioEngine {
       this.howl.unload()
       this.howl = null
     }
+    this.soundId = null
+    this._playing = false
     this.onEndCallback = null
     this.onSeekUpdate = null
     this.onLoadCallback = null

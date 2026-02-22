@@ -65,6 +65,19 @@ app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.nathanialhenniges.tunevault')
   app.setName('TuneVault')
 
+  // Set About panel for macOS to show TuneVault instead of Electron
+  if (process.platform === 'darwin') {
+    const iconPath = is.dev
+      ? join(app.getAppPath(), 'build', 'icon.png')
+      : join(process.resourcesPath, 'icon.png')
+    app.setAboutPanelOptions({
+      applicationName: 'TuneVault',
+      applicationVersion: app.getVersion(),
+      copyright: '© 2025 Nathanial Henniges',
+      iconPath
+    })
+  }
+
   // Handle tunevault:// protocol requests — serve local audio files
   protocol.handle('tunevault', (request) => {
     // URL format: tunevault://audio/<encoded-file-path>
@@ -72,7 +85,12 @@ app.whenReady().then(() => {
     const filePath = decodeURIComponent(url.pathname.replace(/^\/+/, ''))
     // On Windows paths don't start with /, on macOS/Linux they do
     const resolvedPath = process.platform === 'win32' ? filePath : '/' + filePath
-    return net.fetch(pathToFileURL(resolvedPath).href)
+    const fileUrl = pathToFileURL(resolvedPath).href
+
+    // Forward Range headers so HTML5 <audio> seeking works
+    return net.fetch(fileUrl, {
+      headers: request.headers
+    })
   })
 
   // Set dock icon in dev mode (production uses electron-builder config)

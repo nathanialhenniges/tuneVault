@@ -118,3 +118,13 @@ body {
 input[type="range"] {
   accent-color: var(--accent);
 }
+
+/* Equalizer spinner */
+@keyframes equalizerPulse {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+@keyframes textPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}

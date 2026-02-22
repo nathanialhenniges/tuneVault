@@ -4,6 +4,7 @@ import { TrackRow } from './TrackRow'
 import { usePlaylistStore } from '../../store/playlistStore'
 import { useDownload } from '../../hooks/useDownload'
 import { Checkbox } from '../ui/Checkbox'
+import { PlaylistLoader } from '../ui/PlaylistLoader'
 
 export function PlaylistView(): JSX.Element {
   const { currentPlaylist, loading } = usePlaylistStore()
@@ -50,9 +51,8 @@ export function PlaylistView(): JSX.Element {
       </div>
 
       {loading && (
-        <div className="flex items-center gap-3 text-text-secondary">
-          <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm">Fetching playlist...</span>
+        <div className="flex items-center justify-center" style={{ minHeight: 'calc(100vh - 300px)' }}>
+          <PlaylistLoader />
         </div>
       )}
 
@@ -90,10 +90,14 @@ export function PlaylistView(): JSX.Element {
 
           {/* Select all header */}
           <div className="flex items-center gap-3 px-4 py-1">
-            <label className="flex items-center gap-2 text-xs text-text-muted cursor-pointer select-none">
+            <button
+              type="button"
+              onClick={toggleAll}
+              className="flex items-center gap-2 text-xs text-text-muted cursor-pointer select-none"
+            >
               <Checkbox checked={allSelected} onChange={toggleAll} />
               Select all
-            </label>
+            </button>
             {selected.size > 0 && (
               <button
                 onClick={() => setSelected(new Set())}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { usePlayerStore } from '../../store/playerStore'
 import { audioEngine } from '../../lib/audioEngine'
 import { NowPlaying } from './NowPlaying'
@@ -34,6 +34,8 @@ function RepeatIcon({ mode }: { mode: RepeatMode }): JSX.Element {
 
 export function PlayerBar(): JSX.Element {
   const [showQueue, setShowQueue] = useState(false)
+  const [isSeeking, setIsSeeking] = useState(false)
+  const seekValueRef = useRef(0)
 
   const isPlaying = usePlayerStore((s) => s.isPlaying)
   const togglePlay = usePlayerStore((s) => s.togglePlay)
@@ -47,10 +49,16 @@ export function PlayerBar(): JSX.Element {
   const setRepeat = usePlayerStore((s) => s.setRepeat)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>): void => {
+  const handleSeekInput = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const time = parseFloat(e.target.value)
-    audioEngine.seek(time)
+    seekValueRef.current = time
+    setIsSeeking(true)
     usePlayerStore.getState().setSeek(time)
+  }
+
+  const handleSeekCommit = (): void => {
+    audioEngine.seek(seekValueRef.current)
+    setIsSeeking(false)
   }
 
   const cycleRepeat = (): void => {
@@ -107,8 +115,10 @@ export function PlayerBar(): JSX.Element {
             min={0}
             max={duration || 1}
             step={0.1}
-            value={seek}
-            onChange={handleSeek}
+            value={isSeeking ? seekValueRef.current : seek}
+            onChange={handleSeekInput}
+            onMouseUp={handleSeekCommit}
+            onTouchEnd={handleSeekCommit}
             className="flex-1 h-1 appearance-none bg-bg-inset rounded-full cursor-pointer"
           />
           <span className="text-xs text-text-muted w-10">{formatTime(duration)}</span>
