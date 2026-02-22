@@ -14,6 +14,7 @@ const statusLabels: Record<string, string> = {
   converting: 'Converting',
   tagging: 'Tagging',
   done: 'Complete',
+  skipped: 'Skipped',
   error: 'Error'
 }
 
@@ -39,9 +40,11 @@ export function DownloadItem({ track, progress }: DownloadItemProps): JSX.Elemen
               className={`text-xs px-2 py-0.5 rounded-full ${
                 status === 'done'
                   ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-                  : status === 'error'
-                    ? 'bg-red-500/10 text-red-600 dark:text-red-400'
-                    : 'bg-bg-surface text-text-secondary'
+                  : status === 'skipped'
+                    ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+                    : status === 'error'
+                      ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                      : 'bg-bg-surface text-text-secondary'
               }`}
             >
               {statusLabels[status] ?? status}

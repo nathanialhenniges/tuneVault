@@ -66,6 +66,10 @@ export function TrackRow({ track, index, tracks, selected, onToggleSelect }: Tra
 
       <span className="text-xs text-text-muted">{formatDuration(track.duration)}</span>
 
+      {track.bitrate && (
+        <span className="text-xs text-text-muted">{track.bitrate}kbs</span>
+      )}
+
       {track.filePath && (
         <span className="text-accent opacity-0 group-hover:opacity-100 transition">
           <PlayIcon className="w-4 h-4" />

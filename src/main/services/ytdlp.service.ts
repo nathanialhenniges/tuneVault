@@ -191,6 +191,17 @@ export class YtdlpService {
     })
   }
 
+  async fetchTrackMeta(videoId: string): Promise<{ releaseDate?: string; bitrate?: number }> {
+    try {
+      const json = await this.dumpJson(videoId)
+      const releaseDate = (json.release_date as string) || (json.upload_date as string) || undefined
+      const bitrate = typeof json.abr === 'number' ? Math.round(json.abr) : undefined
+      return { releaseDate, bitrate }
+    } catch {
+      return {}
+    }
+  }
+
   sanitizeFilename(name: string): string {
     return name.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim()
   }

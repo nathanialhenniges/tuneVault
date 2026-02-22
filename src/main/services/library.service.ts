@@ -121,7 +121,13 @@ export class LibraryService {
     const downloaded = pl.tracks
       .filter((t) => t.filePath)
       .sort((a, b) => a.position - b.position)
-    const lines = downloaded.map((t, i) => `${i + 1}) ${t.artist} - ${t.title}`)
+    const lines = downloaded.map((t, i) => {
+      let line = `${i + 1}) ${t.artist} - ${t.title}`
+      if (t.releaseDate) line += ` | Date: ${t.releaseDate}`
+      if (t.bitrate) line += ` | Bitrate: ${t.bitrate}kbps`
+      if (t.url) line += ` | URL: ${t.url}`
+      return line
+    })
     writeFileSync(join(playlistDir, 'track-order.txt'), lines.join('\n'), 'utf-8')
   }
 
@@ -138,7 +144,7 @@ export class LibraryService {
       .filter((l) => l.trim())
     const orderedKeys = lines
       .map((line) => {
-        const match = line.match(/^\d+\)\s*(.+)$/)
+        const match = line.match(/^\d+\)\s*(.+?)(?:\s*\||$)/)
         return match ? match[1].trim().toLowerCase() : ''
       })
       .filter(Boolean)

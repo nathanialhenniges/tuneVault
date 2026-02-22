@@ -7,9 +7,11 @@ export function ProgressBar({ percent, status }: ProgressBarProps): JSX.Element 
   const color =
     status === 'done'
       ? 'bg-green-500'
-      : status === 'error'
-        ? 'bg-red-500'
-        : 'bg-accent'
+      : status === 'skipped'
+        ? 'bg-yellow-500'
+        : status === 'error'
+          ? 'bg-red-500'
+          : 'bg-accent'
 
   return (
     <div className="w-full h-1.5 bg-bg-inset rounded-full overflow-hidden">

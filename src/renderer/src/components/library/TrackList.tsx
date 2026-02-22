@@ -49,6 +49,7 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
         <span className="flex-1">Title</span>
         <span className="w-32">Playlist</span>
         <span className="w-16 text-right">Duration</span>
+        <span className="w-14 text-right">Bitrate</span>
         <span className="w-20"></span>
       </div>
 
@@ -91,6 +92,9 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
             <span className="w-32 text-xs text-text-muted truncate">{track.playlistTitle}</span>
             <span className="w-16 text-right text-xs text-text-muted">
               {formatDuration(track.duration)}
+            </span>
+            <span className="w-14 text-right text-xs text-text-muted">
+              {track.bitrate ? `${track.bitrate}kbs` : ''}
             </span>
 
             <div className="w-20 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition">

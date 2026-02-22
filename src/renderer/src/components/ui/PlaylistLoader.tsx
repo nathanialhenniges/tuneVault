@@ -1,3 +1,5 @@
+import { SpinningWolf } from './SpinningWolf'
+
 const barConfigs = [
   { duration: '0.8s', delay: '0s' },
   { duration: '1.1s', delay: '0.15s' },
@@ -6,7 +8,25 @@ const barConfigs = [
   { duration: '0.9s', delay: '0.4s' }
 ]
 
-export function PlaylistLoader(): JSX.Element {
+interface PlaylistLoaderProps {
+  wolfMode?: boolean
+}
+
+export function PlaylistLoader({ wolfMode }: PlaylistLoaderProps): JSX.Element {
+  if (wolfMode) {
+    return (
+      <div className="flex flex-col items-center gap-5 py-4">
+        <SpinningWolf size={80} />
+        <span
+          className="text-base text-text-secondary"
+          style={{ animation: 'textPulse 2s ease-in-out infinite' }}
+        >
+          Howling at the server...
+        </span>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col items-center gap-5 py-4">
       <div className="flex items-end gap-[5px] h-14">

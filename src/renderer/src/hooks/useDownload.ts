@@ -8,7 +8,7 @@ export function useDownload() {
   const settings = useSettingsStore((s) => s.settings)
   const isDownloading = useDownloadStore((s) => s.isDownloading)
 
-  const startDownload = async (selectedTrackIds?: Set<string>): Promise<void> => {
+  const startDownload = async (selectedTrackIds?: Set<string>, forceRedownload?: boolean): Promise<void> => {
     if (!playlist) return
 
     // If specific tracks selected, filter; otherwise download all
@@ -24,7 +24,10 @@ export function useDownload() {
       playlist: downloadPlaylist,
       format: settings.audioFormat,
       outputDir: settings.musicDir,
-      concurrency: settings.concurrency
+      concurrency: settings.concurrency,
+      forceRedownload,
+      dateFormat: settings.dateFormat,
+      releaseDateSource: settings.releaseDateSource
     }
 
     for (const track of tracks) {

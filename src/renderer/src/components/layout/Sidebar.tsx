@@ -22,7 +22,7 @@ export function Sidebar(): JSX.Element {
   const downloads = useDownloadStore((s) => s.downloads)
 
   const activeDownloads = Array.from(downloads.values()).filter(
-    (d) => d.status !== 'done' && d.status !== 'error'
+    (d) => d.status !== 'done' && d.status !== 'skipped' && d.status !== 'error'
   ).length
 
   return (
