@@ -1,5 +1,17 @@
 # TuneVault - YouTube Playlist Downloader and Music Player
 
+> **Disclaimer:** TuneVault is provided strictly for **educational
+> and personal use only**. Downloading copyrighted content without
+> the permission of the copyright holder may violate applicable
+> laws in your jurisdiction. You are solely responsible for
+> ensuring that your use of this software complies with all
+> applicable local, state, national, and international laws and
+> regulations. The developers of TuneVault do not endorse,
+> encourage, or condone the illegal downloading or distribution
+> of copyrighted material. By using this software, you acknowledge
+> that you do so **at your own risk**. This software is not
+> affiliated with or endorsed by YouTube or Google.
+
 TuneVault is a cross-platform desktop application that downloads
 YouTube playlists as high-quality audio files with full iTunes
 metadata tagging and album art. It includes a built-in music player
