@@ -7,7 +7,7 @@ export function NowPlaying(): JSX.Element {
   if (!track) {
     return (
       <div className="flex items-center gap-3 w-60">
-        <div className="w-14 h-14 bg-bg-surface rounded-lg flex items-center justify-center">
+        <div className="w-14 h-14 rounded-lg flex items-center justify-center" style={{ background: 'var(--glass-float-bg)', backdropFilter: 'blur(8px)' }}>
           <MusicalNoteIcon className="w-6 h-6 text-text-muted" />
         </div>
         <div className="text-sm text-text-muted">Nothing playing</div>
@@ -20,7 +20,8 @@ export function NowPlaying(): JSX.Element {
       <img
         src={track.thumbnailUrl}
         alt={track.title}
-        className="w-14 h-14 rounded-lg object-cover bg-bg-surface shrink-0 shadow-lg"
+        className="w-14 h-14 rounded-lg object-cover bg-bg-surface shrink-0"
+        style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.1)' }}
       />
       <div className="min-w-0">
         <p className="text-sm font-medium truncate">{track.title}</p>

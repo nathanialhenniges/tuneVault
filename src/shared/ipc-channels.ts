@@ -11,9 +11,6 @@ export const IpcChannels = {
   DOWNLOAD_COMPLETE: 'download:complete',
   DOWNLOAD_ERROR: 'download:error',
 
-  // Metadata
-  METADATA_WRITE: 'metadata:write',
-
   // Library
   LIBRARY_GET: 'library:get',
   LIBRARY_GET_RESULT: 'library:get-result',
@@ -22,9 +19,8 @@ export const IpcChannels = {
   LIBRARY_DELETE_TRACKS: 'library:delete-tracks',
   LIBRARY_DELETE_ALL: 'library:delete-all',
   LIBRARY_OPEN_FOLDER: 'library:open-folder',
-  LIBRARY_OPEN_FILE: 'library:open-file',
-  LIBRARY_GET_TRACK_ORDER_PATH: 'library:get-track-order-path',
-  LIBRARY_READ_TRACK_ORDER: 'library:read-track-order',
+  LIBRARY_GET_PLAYLIST_INFO_PATH: 'library:get-playlist-info-path',
+  LIBRARY_READ_PLAYLIST_INFO: 'library:read-playlist-info',
   LIBRARY_VERIFY: 'library:verify',
 
   // Player

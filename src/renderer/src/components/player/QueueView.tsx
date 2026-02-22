@@ -16,8 +16,11 @@ export function QueueView({ open, onClose }: QueueViewProps): JSX.Element | null
   const upcoming = queue.slice(queueIndex + 1)
 
   return (
-    <div className="absolute bottom-full right-0 mb-2 w-80 max-h-96 bg-bg-raised border border-border-default rounded-xl shadow-2xl overflow-hidden transition-colors duration-200">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
+    <div
+      className="absolute bottom-full right-0 mb-2 w-80 max-h-96 glass-float glass-border-float overflow-hidden transition-colors duration-200 glass-reveal"
+      style={{ borderRadius: 'var(--radius-panel)' }}
+    >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--glass-border-edge)]">
         <h3 className="text-sm font-semibold">Up Next</h3>
         <button onClick={onClose} className="text-text-secondary hover:text-text-primary text-xs">
           Close
@@ -35,7 +38,7 @@ export function QueueView({ open, onClose }: QueueViewProps): JSX.Element | null
                 setQueue(queue, queueIndex + 1 + i)
                 play()
               }}
-              className="w-full flex items-center gap-3 px-4 py-2 hover:bg-bg-surface-hover transition text-left"
+              className="w-full flex items-center gap-3 px-4 py-2 hover:bg-white/5 transition text-left"
             >
               <span className="text-xs text-text-muted w-5">{i + 1}</span>
               <img

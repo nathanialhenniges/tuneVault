@@ -88,12 +88,12 @@ export function TrackRow({ track, index, tracks, selected, onToggleSelect, downl
   return (
     <div
       onContextMenu={handleContextMenu}
-      className={`flex items-center gap-4 px-4 py-2.5 rounded-lg transition group ${
+      className={`flex items-center gap-4 px-4 py-2.5 rounded-[var(--radius-item)] transition group ${
         isCurrent
-          ? 'bg-accent-glow text-accent'
+          ? 'bg-accent/10 text-accent border-l-2 border-accent'
           : track.filePath
-            ? 'hover:bg-bg-surface-hover cursor-pointer'
-            : 'hover:bg-bg-surface-hover'
+            ? 'hover:bg-white/5 cursor-pointer'
+            : 'hover:bg-white/5'
       }`}
     >
       {onToggleSelect !== undefined && (

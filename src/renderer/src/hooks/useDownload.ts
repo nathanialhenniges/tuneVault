@@ -42,7 +42,6 @@ export function useDownload() {
     }
 
     await window.api.startDownload(request)
-    await window.api.writeMetadata(downloadPlaylist, settings.musicDir)
   }
 
   return { startDownload, isDownloading }

@@ -1,8 +1,7 @@
 import { spawn } from 'child_process'
-import { writeFileSync, mkdirSync, existsSync, unlinkSync } from 'fs'
+import { existsSync, unlinkSync } from 'fs'
 import { join } from 'path'
 import { BinaryService } from './binary.service'
-import type { MetadataEntry } from '../../shared/models'
 import https from 'https'
 import http from 'http'
 import { createWriteStream } from 'fs'
@@ -141,47 +140,6 @@ export class FfmpegService {
         unlinkSync(thumbnailPath)
       }
     }
-  }
-
-  async writeMetadataFiles(
-    entries: MetadataEntry[],
-    outputDir: string,
-    playlistTitle: string
-  ): Promise<void> {
-    const dir = join(outputDir, playlistTitle.replace(/[<>:"/\\|?*]/g, '').trim())
-    mkdirSync(dir, { recursive: true })
-
-    // Human-readable text file
-    const textLines = [
-      `Playlist: ${playlistTitle}`,
-      `Downloaded: ${new Date().toISOString()}`,
-      `Tracks: ${entries.length}`,
-      '',
-      '─'.repeat(60),
-      ''
-    ]
-
-    for (const entry of entries) {
-      const duration = this.formatDuration(entry.duration)
-      textLines.push(
-        `${String(entry.position).padStart(2, '0')}. ${entry.title}`,
-        `    Artist: ${entry.artist}`,
-        `    Duration: ${duration}`,
-        `    URL: ${entry.videoUrl}`,
-        ''
-      )
-    }
-
-    writeFileSync(join(dir, '_metadata.txt'), textLines.join('\n'), 'utf-8')
-
-    // JSON file
-    const jsonData = {
-      playlist: playlistTitle,
-      downloadedAt: new Date().toISOString(),
-      trackCount: entries.length,
-      tracks: entries
-    }
-    writeFileSync(join(dir, '_metadata.json'), JSON.stringify(jsonData, null, 2), 'utf-8')
   }
 
   private downloadFile(url: string, destPath: string): Promise<void> {

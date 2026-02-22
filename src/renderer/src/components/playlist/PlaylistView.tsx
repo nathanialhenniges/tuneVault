@@ -148,18 +148,19 @@ export function PlaylistView(): JSX.Element {
       {currentPlaylist && (
         <div className="space-y-4">
           {/* Playlist header — sticky */}
-          <div className="sticky top-0 z-10 bg-bg-base pb-3">
+          <div className="sticky top-0 z-10 pb-3" style={{ background: 'var(--glass-sidebar-bg)', backdropFilter: 'blur(var(--glass-blur-chrome))', WebkitBackdropFilter: 'blur(var(--glass-blur-chrome))' }}>
             <div className="flex items-center gap-4">
               <img
                 src={currentPlaylist.thumbnailUrl}
                 alt=""
-                className="w-20 h-20 rounded-lg object-cover shadow-lg"
+                className="w-20 h-20 object-cover"
+                style={{ borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-glass-lg)' }}
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-semibold truncate">{currentPlaylist.title}</h3>
                   {loadedFromCache && (
-                    <span className="text-[10px] text-text-muted px-1.5 py-0.5 bg-bg-surface rounded shrink-0">cached</span>
+                    <span className="text-[10px] text-text-muted px-1.5 py-0.5 bg-white/5 border border-[var(--glass-border-edge)] rounded shrink-0">cached</span>
                   )}
                 </div>
                 <p className="text-sm text-text-secondary">{currentPlaylist.channelTitle}</p>

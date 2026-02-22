@@ -55,12 +55,13 @@ export function PlaylistInput(): JSX.Element {
               if (recentPlaylists.length > 0 && !loading) setShowRecent(true)
             }}
             placeholder="Paste YouTube playlist URL..."
-            className="w-full bg-bg-surface border border-border-default rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className="w-full border border-[var(--glass-border-edge)] rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed transition"
+            style={{ background: 'var(--glass-sidebar-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
           />
 
           {showRecent && !loading && recentPlaylists.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-bg-surface border border-border-default rounded-lg shadow-xl z-50 overflow-hidden">
-              <div className="px-3 py-2 text-xs text-text-muted uppercase tracking-wider border-b border-border-default">
+            <div className="absolute top-full left-0 right-0 mt-1 glass-float glass-border-float z-50 overflow-hidden glass-reveal" style={{ borderRadius: 'var(--radius-card)' }}>
+              <div className="px-3 py-2 text-xs text-text-muted uppercase tracking-wider border-b border-[var(--glass-border-edge)]">
                 Recent Playlists
               </div>
               {recentPlaylists.map((recent) => (
@@ -68,7 +69,7 @@ export function PlaylistInput(): JSX.Element {
                   key={recent.url}
                   type="button"
                   onClick={() => handleSelectRecent(recent.url)}
-                  className="w-full text-left px-3 py-2.5 text-sm hover:bg-bg-surface-hover transition truncate"
+                  className="w-full text-left px-3 py-2.5 text-sm hover:bg-white/5 transition truncate"
                 >
                   <span className="text-text-primary">{recent.title}</span>
                   <span className="block text-xs text-text-muted truncate mt-0.5">{recent.url}</span>

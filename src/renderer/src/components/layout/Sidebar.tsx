@@ -25,23 +25,25 @@ export function Sidebar(): JSX.Element {
     (d) => d.status !== 'done' && d.status !== 'skipped' && d.status !== 'error'
   ).length
 
+  const recentPlaylists = library.playlists.slice(0, 5)
+
   return (
-    <aside className="w-56 bg-bg-surface border-r border-border-default flex flex-col transition-colors duration-200">
-      <div className="drag-region h-12 flex items-center pl-20 pr-4 border-b border-border-default">
+    <aside className="relative w-56 glass-chrome glass-border-sidebar flex flex-col transition-colors duration-200">
+      <div className="drag-region h-12 flex items-center pl-20 pr-4 border-b border-[var(--glass-border-edge)]">
         <h1 className="text-sm font-bold tracking-wide text-accent no-drag">TuneVault</h1>
       </div>
 
-      <nav className="flex-1 py-2">
+      <nav className="flex-1 py-2 px-2">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path
           return (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+              className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors rounded-[10px] ${
                 isActive
-                  ? 'bg-bg-surface-hover text-accent'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-surface-hover'
+                  ? 'bg-accent/10 text-accent shadow-[inset_0_0_0_1px_rgba(249,115,22,0.15)]'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
               }`}
             >
               <item.Icon className="w-5 h-5" />
@@ -56,16 +58,16 @@ export function Sidebar(): JSX.Element {
         })}
       </nav>
 
-      {library.playlists.length > 0 && (
-        <div className="border-t border-border-default py-2">
-          <p className="px-4 py-1 text-xs text-text-muted uppercase tracking-wider">
+      {recentPlaylists.length > 0 && (
+        <div className="border-t border-[var(--glass-border-edge)] py-2 px-2">
+          <p className="px-3 py-1 text-xs text-text-muted uppercase tracking-wider">
             Downloaded
           </p>
-          {library.playlists.map((pl) => (
+          {recentPlaylists.map((pl) => (
             <button
               key={pl.id}
-              onClick={() => navigate('/library')}
-              className="w-full text-left px-4 py-1.5 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-surface-hover truncate"
+              onClick={() => navigate('/library', { state: { playlistFilter: pl.id } })}
+              className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-[10px] truncate transition-colors"
             >
               {pl.title}
             </button>
@@ -73,7 +75,7 @@ export function Sidebar(): JSX.Element {
         </div>
       )}
 
-      <div className="border-t border-border-default px-4 py-2">
+      <div className="border-t border-[var(--glass-border-edge)] px-4 py-2">
         <p className="text-xs text-text-muted">v{window.api.getVersion()}</p>
       </div>
     </aside>

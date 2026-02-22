@@ -48,6 +48,34 @@
 
   --scrollbar-thumb: #d4d4d8;
   --scrollbar-thumb-hover: #a1a1aa;
+
+  /* Glass tokens — light */
+  --glass-sidebar-bg: rgba(255, 255, 255, 0.55);
+  --glass-player-bg: rgba(255, 255, 255, 0.6);
+  --glass-titlebar-bg: rgba(255, 255, 255, 0.45);
+  --glass-float-bg: rgba(255, 255, 255, 0.72);
+  --glass-modal-bg: rgba(255, 255, 255, 0.78);
+  --glass-blur-chrome: 18px;
+  --glass-blur-float: 24px;
+  --glass-blur-modal: 28px;
+  --glass-border-light: rgba(255, 255, 255, 0.7);
+  --glass-border-edge: rgba(0, 0, 0, 0.06);
+  --glass-shimmer: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 60%);
+
+  /* Shadow scale */
+  --shadow-glass-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-glass-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-glass-lg: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-glass-xl: 0 16px 48px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.06);
+
+  /* Radius scale */
+  --radius-panel: 18px;
+  --radius-card: 14px;
+  --radius-item: 10px;
+
+  /* Seek track */
+  --seek-track-bg: rgba(0, 0, 0, 0.08);
+  --seek-track-hover: rgba(0, 0, 0, 0.12);
 }
 
 /* ── Obsidian dark theme ─────────────────────────────────── */
@@ -72,6 +100,33 @@
 
   --scrollbar-thumb: #23232a;
   --scrollbar-thumb-hover: #3f3f46;
+
+  /* Glass tokens — dark */
+  --glass-sidebar-bg: rgba(15, 15, 18, 0.55);
+  --glass-player-bg: rgba(15, 15, 18, 0.6);
+  --glass-titlebar-bg: rgba(15, 15, 18, 0.45);
+  --glass-float-bg: rgba(20, 20, 24, 0.72);
+  --glass-modal-bg: rgba(20, 20, 24, 0.78);
+  --glass-blur-chrome: 18px;
+  --glass-blur-float: 24px;
+  --glass-blur-modal: 28px;
+  --glass-border-light: rgba(255, 255, 255, 0.06);
+  --glass-border-edge: rgba(255, 255, 255, 0.03);
+  --glass-shimmer: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0) 60%);
+
+  /* Shadow scale — dark */
+  --shadow-glass-sm: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-glass-md: 0 4px 12px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-glass-lg: 0 8px 24px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-glass-xl: 0 16px 48px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
+
+  --radius-panel: 18px;
+  --radius-card: 14px;
+  --radius-item: 10px;
+
+  /* Seek track — dark */
+  --seek-track-bg: rgba(255, 255, 255, 0.06);
+  --seek-track-hover: rgba(255, 255, 255, 0.1);
 }
 
 body {
@@ -85,6 +140,121 @@ body {
   background-color: var(--bg-base);
   color: var(--text-primary);
   transition: background-color 0.2s, color 0.2s;
+}
+
+/* Ambient gradient — gives backdrop-blur visual content */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 90%, rgba(249, 115, 22, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 10%, rgba(249, 115, 22, 0.04) 0%, transparent 70%);
+}
+
+/* ── Glass utility classes ───────────────────────────────── */
+.glass-chrome {
+  background: var(--glass-sidebar-bg);
+  backdrop-filter: blur(var(--glass-blur-chrome));
+  -webkit-backdrop-filter: blur(var(--glass-blur-chrome));
+  box-shadow: var(--shadow-glass-sm);
+}
+
+.glass-chrome::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--glass-shimmer);
+  border-radius: inherit;
+}
+
+.glass-float {
+  background: var(--glass-float-bg);
+  backdrop-filter: blur(var(--glass-blur-float));
+  -webkit-backdrop-filter: blur(var(--glass-blur-float));
+  box-shadow: var(--shadow-glass-lg);
+}
+
+.glass-modal {
+  background: var(--glass-modal-bg);
+  backdrop-filter: blur(var(--glass-blur-modal));
+  -webkit-backdrop-filter: blur(var(--glass-blur-modal));
+  box-shadow: var(--shadow-glass-xl);
+}
+
+/* Glass borders */
+.glass-border-sidebar {
+  border-right: 1px solid var(--glass-border-edge);
+  box-shadow: var(--shadow-glass-sm), inset -1px 0 0 var(--glass-border-light);
+}
+
+.glass-border-player {
+  border-top: 1px solid var(--glass-border-edge);
+  box-shadow: var(--shadow-glass-md), inset 0 1px 0 var(--glass-border-light);
+}
+
+.glass-border-float {
+  border: 1px solid var(--glass-border-edge);
+  box-shadow: var(--shadow-glass-lg), inset 0 1px 0 var(--glass-border-light);
+}
+
+/* Seek / volume track styling */
+.seek-track {
+  background: var(--seek-track-bg);
+  transition: background 0.15s;
+}
+.seek-track:hover {
+  background: var(--seek-track-hover);
+}
+
+/* Glass reveal animation for floating panels */
+@keyframes glassReveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.glass-reveal {
+  animation: glassReveal 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Route transitions */
+@keyframes routeEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes routeExit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.route-enter {
+  animation: routeEnter 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.route-exit {
+  animation: routeExit 0.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Custom scrollbar */

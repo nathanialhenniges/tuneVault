@@ -68,7 +68,7 @@ export function PlayerBar(): JSX.Element {
   }
 
   return (
-    <div className="h-24 bg-bg-surface border-t border-border-default flex items-center px-4 gap-4 relative transition-colors duration-200">
+    <div className="relative h-24 glass-chrome glass-border-player flex items-center px-4 gap-4 transition-colors duration-200">
       <NowPlaying />
 
       <div className="flex-1 flex flex-col items-center gap-1">
@@ -89,7 +89,7 @@ export function PlayerBar(): JSX.Element {
           <button
             onClick={togglePlay}
             disabled={!currentTrack}
-            className="w-9 h-9 flex items-center justify-center bg-accent text-text-inverted rounded-full hover:bg-accent-hover hover:scale-105 disabled:opacity-50 transition"
+            className="w-9 h-9 flex items-center justify-center bg-accent text-text-inverted rounded-full hover:bg-accent-hover hover:scale-105 disabled:opacity-50 transition shadow-[0_0_12px_rgba(249,115,22,0.3)]"
           >
             {isPlaying ? <PauseIcon className="w-5 h-5" /> : <PlayIcon className="w-5 h-5" />}
           </button>
@@ -119,7 +119,7 @@ export function PlayerBar(): JSX.Element {
             onChange={handleSeekInput}
             onMouseUp={handleSeekCommit}
             onTouchEnd={handleSeekCommit}
-            className="flex-1 h-1 appearance-none bg-bg-inset rounded-full cursor-pointer"
+            className="flex-1 h-1 appearance-none seek-track rounded-full cursor-pointer"
           />
           <span className="text-xs text-text-muted w-10">{formatTime(duration)}</span>
         </div>

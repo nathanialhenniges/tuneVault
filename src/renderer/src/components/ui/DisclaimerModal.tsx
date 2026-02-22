@@ -19,8 +19,8 @@ export function DisclaimerModal(): JSX.Element | null {
   if (!show) return null
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]">
-      <div className="bg-bg-surface border border-border-default rounded-xl p-8 max-w-lg mx-4 shadow-2xl">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]" style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+      <div className="glass-modal glass-border-float p-8 max-w-lg mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
         <div className="flex items-center gap-3 mb-4">
           <ExclamationTriangleIcon className="w-8 h-8 text-accent shrink-0" />
           <h2 className="text-xl font-bold">Disclaimer</h2>

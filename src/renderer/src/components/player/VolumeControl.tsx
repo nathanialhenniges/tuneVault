@@ -30,7 +30,7 @@ export function VolumeControl(): JSX.Element {
         step={0.01}
         value={volume}
         onChange={(e) => setVolume(parseFloat(e.target.value))}
-        className="w-20 h-1 appearance-none bg-bg-inset rounded-full cursor-pointer"
+        className="w-20 h-1 appearance-none seek-track rounded-full cursor-pointer"
       />
       <span className="text-xs text-text-muted w-8 text-right">{percent}%</span>
     </div>

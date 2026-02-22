@@ -32,29 +32,25 @@ export function registerLibraryIpc(): void {
     return library.verify()
   })
 
-  ipcMain.handle(IpcChannels.LIBRARY_GET_TRACK_ORDER_PATH, async (_event, playlistId: string) => {
+  ipcMain.handle(IpcChannels.LIBRARY_GET_PLAYLIST_INFO_PATH, async (_event, playlistId: string) => {
     const data = library.load()
     const pl = data.playlists.find((p) => p.id === playlistId)
     if (!pl) return null
     const firstTrack = pl.tracks.find((t) => t.filePath)
     if (!firstTrack) return null
-    const orderFile = join(dirname(firstTrack.filePath!), 'track-order.txt')
-    return existsSync(orderFile) ? orderFile : null
+    const infoFile = join(dirname(firstTrack.filePath!), 'playlist-info.md')
+    return existsSync(infoFile) ? infoFile : null
   })
 
-  ipcMain.handle(IpcChannels.LIBRARY_READ_TRACK_ORDER, async (_event, playlistId: string) => {
+  ipcMain.handle(IpcChannels.LIBRARY_READ_PLAYLIST_INFO, async (_event, playlistId: string) => {
     const data = library.load()
     const pl = data.playlists.find((p) => p.id === playlistId)
     if (!pl) return null
     const firstTrack = pl.tracks.find((t) => t.filePath)
     if (!firstTrack) return null
-    const orderFile = join(dirname(firstTrack.filePath!), 'track-order.txt')
-    if (!existsSync(orderFile)) return null
-    return readFileSync(orderFile, 'utf-8')
-  })
-
-  ipcMain.handle(IpcChannels.LIBRARY_OPEN_FILE, async (_event, filePath: string) => {
-    shell.openPath(filePath)
+    const infoFile = join(dirname(firstTrack.filePath!), 'playlist-info.md')
+    if (!existsSync(infoFile)) return null
+    return readFileSync(infoFile, 'utf-8')
   })
 
   ipcMain.handle(IpcChannels.LIBRARY_OPEN_FOLDER, async (_event, filePath: string) => {

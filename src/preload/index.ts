@@ -40,10 +40,6 @@ const api = {
     return () => ipcRenderer.removeListener(IpcChannels.DOWNLOAD_ERROR, handler)
   },
 
-  // Metadata
-  writeMetadata: (playlist: Playlist, outputDir: string): Promise<{ success: boolean }> =>
-    ipcRenderer.invoke(IpcChannels.METADATA_WRITE, playlist, outputDir),
-
   // Library
   getLibrary: (): Promise<LibraryData> =>
     ipcRenderer.invoke(IpcChannels.LIBRARY_GET),
@@ -57,12 +53,10 @@ const api = {
     ipcRenderer.invoke(IpcChannels.LIBRARY_DELETE_ALL),
   openFolder: (filePath: string): Promise<void> =>
     ipcRenderer.invoke(IpcChannels.LIBRARY_OPEN_FOLDER, filePath),
-  openFile: (filePath: string): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_OPEN_FILE, filePath),
-  getTrackOrderPath: (playlistId: string): Promise<string | null> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_GET_TRACK_ORDER_PATH, playlistId),
-  readTrackOrder: (playlistId: string): Promise<string | null> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_READ_TRACK_ORDER, playlistId),
+  getPlaylistInfoPath: (playlistId: string): Promise<string | null> =>
+    ipcRenderer.invoke(IpcChannels.LIBRARY_GET_PLAYLIST_INFO_PATH, playlistId),
+  readPlaylistInfo: (playlistId: string): Promise<string | null> =>
+    ipcRenderer.invoke(IpcChannels.LIBRARY_READ_PLAYLIST_INFO, playlistId),
 
   // Player
   getFileUrl: (filePath: string): Promise<string> =>

@@ -21,11 +21,11 @@ export function SettingsView(): JSX.Element {
             type="text"
             value={settings.musicDir}
             readOnly
-            className="flex-1 bg-bg-surface border border-border-default rounded-lg px-4 py-2.5 text-sm text-text-secondary"
+            className="flex-1 bg-white/5 border border-[var(--glass-border-edge)] rounded-lg px-4 py-2.5 text-sm text-text-secondary"
           />
           <button
             onClick={selectMusicDir}
-            className="px-4 py-2.5 bg-bg-surface-hover hover:bg-bg-inset border border-border-default rounded-lg text-sm transition"
+            className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-[var(--glass-border-edge)] rounded-lg text-sm transition"
           >
             Browse
           </button>
@@ -43,7 +43,7 @@ export function SettingsView(): JSX.Element {
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                 settings.audioFormat === fmt
                   ? 'bg-accent text-text-inverted'
-                  : 'bg-bg-surface text-text-secondary hover:bg-bg-surface-hover'
+                  : 'bg-white/5 text-text-secondary hover:bg-white/10'
               }`}
             >
               {fmt.toUpperCase()}
@@ -63,7 +63,7 @@ export function SettingsView(): JSX.Element {
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                 settings.dateFormat === fmt
                   ? 'bg-accent text-text-inverted'
-                  : 'bg-bg-surface text-text-secondary hover:bg-bg-surface-hover'
+                  : 'bg-white/5 text-text-secondary hover:bg-white/10'
               }`}
             >
               {fmt}
@@ -86,7 +86,7 @@ export function SettingsView(): JSX.Element {
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                 settings.releaseDateSource === value
                   ? 'bg-accent text-text-inverted'
-                  : 'bg-bg-surface text-text-secondary hover:bg-bg-surface-hover'
+                  : 'bg-white/5 text-text-secondary hover:bg-white/10'
               }`}
             >
               {label}
@@ -108,7 +108,7 @@ export function SettingsView(): JSX.Element {
               className={`w-10 h-10 rounded-lg text-sm font-medium transition ${
                 settings.concurrency === n
                   ? 'bg-accent text-text-inverted'
-                  : 'bg-bg-surface text-text-secondary hover:bg-bg-surface-hover'
+                  : 'bg-white/5 text-text-secondary hover:bg-white/10'
               }`}
             >
               {n}
@@ -128,7 +128,7 @@ export function SettingsView(): JSX.Element {
               className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition ${
                 settings.theme === theme
                   ? 'bg-accent text-text-inverted'
-                  : 'bg-bg-surface text-text-secondary hover:bg-bg-surface-hover'
+                  : 'bg-white/5 text-text-secondary hover:bg-white/10'
               }`}
             >
               {theme}

@@ -39,19 +39,20 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps): JSX.Ele
     position: 'fixed',
     left: x,
     top: y,
-    zIndex: 200
+    zIndex: 200,
+    borderRadius: 'var(--radius-card)'
   }
 
   return (
-    <div ref={menuRef} style={style} className="min-w-[180px] py-1 bg-bg-raised border border-border-default rounded-lg shadow-xl animate-in fade-in zoom-in-95 duration-100">
+    <div ref={menuRef} style={style} className="min-w-[180px] py-1.5 px-1 glass-float glass-border-float glass-reveal">
       {items.map((item, i) => (
         <button
           key={i}
           onClick={() => { item.onClick(); onClose() }}
-          className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition ${
+          className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition rounded-[8px] ${
             item.danger
               ? 'text-red-400 hover:bg-red-500/10'
-              : 'text-text-secondary hover:bg-bg-surface-hover hover:text-text-primary'
+              : 'text-text-secondary hover:bg-white/5 hover:text-text-primary'
           }`}
         >
           {item.icon && <span className="w-4 h-4 shrink-0">{item.icon}</span>}

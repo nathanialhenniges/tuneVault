@@ -164,16 +164,6 @@ export class LibraryService {
     }
 
     writeFileSync(join(playlistDir, 'playlist-info.md'), lines.join('\n'), 'utf-8')
-
-    // Also write a simple track-order.txt
-    const txtLines = downloaded.map((t, i) => {
-      let line = `${i + 1}) ${t.artist} - ${t.title}`
-      if (t.releaseDate) line += ` | Date: ${t.releaseDate}`
-      if (t.bitrate) line += ` | Bitrate: ${t.bitrate}kbps`
-      if (t.url) line += ` | URL: ${t.url}`
-      return line
-    })
-    writeFileSync(join(playlistDir, 'track-order.txt'), txtLines.join('\n'), 'utf-8')
   }
 
   deleteAll(): void {

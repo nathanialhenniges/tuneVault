@@ -70,10 +70,10 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
           <div
             key={track.id}
             onContextMenu={(e) => handleContextMenu(e, track)}
-            className={`flex items-center gap-4 px-4 py-2.5 rounded-lg transition group ${
+            className={`flex items-center gap-4 px-4 py-2.5 rounded-[var(--radius-item)] transition group ${
               isCurrent
-                ? 'bg-accent-glow text-accent'
-                : 'hover:bg-bg-surface-hover'
+                ? 'bg-accent/10 text-accent border-l-2 border-accent'
+                : 'hover:bg-white/5'
             }`}
           >
             <Checkbox checked={isSelected} onChange={() => toggleTrackSelection(track.id)} />

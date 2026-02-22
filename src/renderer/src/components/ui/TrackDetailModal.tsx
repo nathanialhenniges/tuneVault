@@ -22,10 +22,11 @@ function formatDuration(seconds: number): string {
 export function TrackDetailModal({ track, onClose }: TrackDetailModalProps): JSX.Element {
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]"
+      style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="bg-bg-surface border border-border-default rounded-xl max-w-lg w-full mx-4 shadow-2xl max-h-[80vh] flex flex-col">
+      <div className="glass-modal glass-border-float max-w-lg w-full mx-4 max-h-[80vh] flex flex-col glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
         {/* Header */}
         <div className="flex items-start gap-4 p-6 pb-4">
           <img
@@ -40,7 +41,7 @@ export function TrackDetailModal({ track, onClose }: TrackDetailModalProps): JSX
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-text-muted hover:text-text-primary transition rounded-lg hover:bg-bg-surface-hover shrink-0"
+            className="p-1.5 text-text-muted hover:text-text-primary transition rounded-lg hover:bg-white/5 shrink-0"
           >
             <XMarkIcon className="w-5 h-5" />
           </button>
@@ -99,7 +100,7 @@ export function TrackDetailModal({ track, onClose }: TrackDetailModalProps): JSX
         {track.description && (
           <div className="px-6 pt-4 pb-2 flex-1 min-h-0 flex flex-col">
             <h3 className="text-sm font-medium text-text-primary mb-2">Description</h3>
-            <div className="flex-1 overflow-y-auto rounded-lg bg-bg-inset border border-border-subtle p-3">
+            <div className="flex-1 overflow-y-auto rounded-lg bg-white/5 border border-[var(--glass-border-edge)] p-3">
               <p className="text-xs text-text-secondary whitespace-pre-wrap leading-relaxed">
                 {track.description}
               </p>
@@ -111,7 +112,7 @@ export function TrackDetailModal({ track, onClose }: TrackDetailModalProps): JSX
         <div className="p-6 pt-4">
           <button
             onClick={onClose}
-            className="w-full py-2.5 bg-bg-surface-hover hover:bg-bg-inset text-text-secondary rounded-lg text-sm transition"
+            className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-text-secondary rounded-lg text-sm transition"
           >
             Close
           </button>
