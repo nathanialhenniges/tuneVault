@@ -127,7 +127,7 @@ async function downloadFfmpeg() {
         `powershell -command "Expand-Archive -Path '${zipPath}' -DestinationPath '${binDir}' -Force"`,
         { stdio: 'inherit' }
       )
-      // Move binaries to the right place
+      // Move binaries to the right place and clean up extracted directory
       execSync(
         `powershell -command "Get-ChildItem -Path '${binDir}' -Recurse -Filter 'ffmpeg.exe' | Move-Item -Destination '${ffmpegDest}' -Force"`,
         { stdio: 'inherit' }
@@ -136,7 +136,15 @@ async function downloadFfmpeg() {
         `powershell -command "Get-ChildItem -Path '${binDir}' -Recurse -Filter 'ffprobe.exe' | Move-Item -Destination '${join(binDir, 'ffprobe.exe')}' -Force"`,
         { stdio: 'inherit' }
       )
-      execSync(`del "${zipPath}"`, { stdio: 'inherit' })
+      // Remove the extracted ffmpeg directory and zip to save ~800MB
+      execSync(
+        `powershell -command "Remove-Item -Path '${join(binDir, 'ffmpeg-*')}' -Recurse -Force -ErrorAction SilentlyContinue"`,
+        { stdio: 'inherit' }
+      )
+      execSync(
+        `powershell -command "Remove-Item -Path '${zipPath}' -Force -ErrorAction SilentlyContinue"`,
+        { stdio: 'inherit' }
+      )
     }
 
     console.log('ffmpeg downloaded successfully')
