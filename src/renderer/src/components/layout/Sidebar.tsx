@@ -72,6 +72,10 @@ export function Sidebar(): JSX.Element {
           ))}
         </div>
       )}
+
+      <div className="border-t border-border-default px-4 py-2">
+        <p className="text-xs text-text-muted">v{window.api.getVersion()}</p>
+      </div>
     </aside>
   )
 }

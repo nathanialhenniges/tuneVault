@@ -2,7 +2,17 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { IpcChannels } from '../shared/ipc-channels'
 import type { AppSettings, DownloadRequest, DownloadProgress, LibraryData, Playlist } from '../shared/models'
 
+const appVersion: string = (() => {
+  try {
+    return require('../../package.json').version
+  } catch {
+    return 'unknown'
+  }
+})()
+
 const api = {
+  getVersion: (): string => appVersion,
+
   // Playlist
   fetchPlaylist: (url: string): Promise<Playlist> =>
     ipcRenderer.invoke(IpcChannels.PLAYLIST_FETCH, url),
