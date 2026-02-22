@@ -31,6 +31,10 @@ const activeDownloads = new Map<string, AbortController>()
 const activeBatches = new Map<string, () => void>()
 const cancelledTracks = new Set<string>()
 
+export function hasActiveDownloads(): boolean {
+  return activeDownloads.size > 0 || activeBatches.size > 0
+}
+
 export function registerDownloadIpc(mainWindow: BrowserWindow): void {
   ipcMain.handle(IpcChannels.DOWNLOAD_START, async (_event, request: DownloadRequest) => {
     const { playlist, format, outputDir, concurrency, forceRedownload, dateFormat, releaseDateSource } = request

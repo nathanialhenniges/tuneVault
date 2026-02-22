@@ -4,6 +4,7 @@ import { pathToFileURL } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllIpc } from './ipc/register'
 import { createTray } from './tray'
+import { hasActiveDownloads } from './ipc/download.ipc'
 
 function getIconPath(): string {
   return is.dev
@@ -45,6 +46,15 @@ function createWindow(): BrowserWindow {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+  })
+
+  // Hide instead of close when downloads are active so they continue in the background
+  mainWindow.on('close', (e) => {
+    const quitting = (app as unknown as Record<string, boolean>).isQuitting
+    if (hasActiveDownloads() && !quitting) {
+      e.preventDefault()
+      mainWindow.hide()
+    }
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -135,8 +145,13 @@ app.whenReady().then(() => {
   })
 })
 
+// Track when the app is truly quitting vs just closing a window
+app.on('before-quit', () => {
+  ;(app as unknown as Record<string, boolean>).isQuitting = true
+})
+
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  if (process.platform !== 'darwin' && !hasActiveDownloads()) {
     app.quit()
   }
 })
