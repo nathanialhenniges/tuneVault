@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useLibraryStore } from '../../store/libraryStore'
 import { SearchBar } from './SearchBar'
 import { TrackList } from './TrackList'
@@ -13,6 +13,8 @@ import {
 } from '@heroicons/react/24/outline'
 import { useSettingsStore } from '../../store/settingsStore'
 import { useLocation } from 'react-router-dom'
+import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 export function LibraryView(): JSX.Element {
   const { loaded, load, getFilteredTracks, library, selectedTrackIds, selectAllTracks, clearSelection, deleteTracks, deleteAll, openFolder } = useLibraryStore()
@@ -211,26 +213,32 @@ export function LibraryView(): JSX.Element {
 
       {/* Playlist Info Viewer Modal */}
       {playlistInfoContent && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-          <div className="glass-modal glass-border-float p-6 max-w-lg w-full mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
-            <div className="flex items-center justify-between mb-4">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setPlaylistInfoContent(null); setPlaylistInfoPath(null) } }}
+        >
+          <div className="glass-modal glass-border-float p-6 max-w-3xl w-full mx-4 max-h-[85vh] flex flex-col glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
+            <div className="flex items-center justify-between mb-4 shrink-0">
               <div className="flex items-center gap-2">
                 <DocumentTextIcon className="w-5 h-5 text-accent" />
                 <h3 className="text-lg font-semibold">Playlist Info</h3>
               </div>
               <button
                 onClick={() => { setPlaylistInfoContent(null); setPlaylistInfoPath(null) }}
-                className="p-1 text-text-muted hover:text-text-primary transition"
+                className="p-1.5 text-text-muted hover:text-text-primary transition rounded-lg hover:bg-white/5"
               >
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
 
-            <pre className="bg-white/5 border border-[var(--glass-border-edge)] rounded-lg p-4 text-sm text-text-secondary font-mono overflow-y-auto max-h-72 whitespace-pre-wrap leading-relaxed">
-              {playlistInfoContent}
-            </pre>
+            <div className="flex-1 overflow-y-auto min-h-0 bg-white/5 border border-[var(--glass-border-edge)] rounded-lg p-5">
+              <div className="markdown-prose">
+                <Markdown remarkPlugins={[remarkGfm]}>{playlistInfoContent}</Markdown>
+              </div>
+            </div>
 
-            <div className="flex justify-end gap-2 mt-4">
+            <div className="flex justify-end gap-2 mt-4 shrink-0">
               <button
                 onClick={handleOpenPlaylistInfoFolder}
                 className="px-3 py-1.5 text-xs text-text-secondary hover:text-accent border border-border-default rounded-lg hover:border-accent/40 hover:bg-accent/5 transition-all flex items-center gap-1.5"
