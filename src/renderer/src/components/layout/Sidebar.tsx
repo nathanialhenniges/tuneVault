@@ -21,7 +21,7 @@ export function Sidebar(): JSX.Element {
 
   return (
     <aside className="w-56 bg-bg-surface border-r border-border-default flex flex-col transition-colors duration-200">
-      <div className="drag-region h-12 flex items-center px-4 border-b border-border-default">
+      <div className="drag-region h-12 flex items-center pl-20 pr-4 border-b border-border-default">
         <h1 className="text-sm font-bold tracking-wide text-accent no-drag">TuneVault</h1>
       </div>
 

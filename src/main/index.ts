@@ -1,9 +1,15 @@
-import { app, shell, BrowserWindow, globalShortcut } from 'electron'
+import { app, shell, BrowserWindow, globalShortcut, nativeImage } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { registerAllIpc } from './ipc/register'
 import { initUpdater } from './updater'
 import { createTray } from './tray'
+
+function getIconPath(): string {
+  return is.dev
+    ? join(app.getAppPath(), 'build', 'icon.png')
+    : join(process.resourcesPath, 'icon.png')
+}
 
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({
@@ -12,6 +18,8 @@ function createWindow(): BrowserWindow {
     minWidth: 900,
     minHeight: 600,
     show: false,
+    title: 'TuneVault',
+    icon: getIconPath(),
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 16 },
     backgroundColor: '#09090b',
@@ -41,6 +49,22 @@ function createWindow(): BrowserWindow {
 
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.nathanialhenniges.tunevault')
+  app.setName('TuneVault')
+
+  // Set dock icon in dev mode (production uses electron-builder config)
+  if (process.platform === 'darwin') {
+    const iconPath = is.dev
+      ? join(app.getAppPath(), 'build', 'icon.png')
+      : join(process.resourcesPath, 'icon.png')
+    try {
+      const icon = nativeImage.createFromPath(iconPath)
+      if (!icon.isEmpty()) {
+        app.dock.setIcon(icon)
+      }
+    } catch {
+      // Icon may not exist yet
+    }
+  }
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
