@@ -18,6 +18,7 @@
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:win": "npm run build && electron-builder --win",
     "dist:linux": "npm run build && electron-builder --linux",
+    "typecheck": "tsc --noEmit",
     "download-binaries": "node scripts/download-binaries.mjs"
   },
   "dependencies": {

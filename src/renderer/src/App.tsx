@@ -12,6 +12,7 @@ import { usePlayerStore } from './store/playerStore'
 import { useKonamiCode } from './hooks/useKonamiCode'
 import { useWolfModeStore } from './hooks/useWolfMode'
 import { DisclaimerModal } from './components/ui/DisclaimerModal'
+import { ToastContainer } from './components/ui/ToastContainer'
 
 export default function App(): JSX.Element {
   const loadSettings = useSettingsStore((s) => s.load)
@@ -67,6 +68,7 @@ export default function App(): JSX.Element {
         </MainLayout>
         <PlayerBar />
         <DisclaimerModal />
+        <ToastContainer />
       </div>
     </MemoryRouter>
   )

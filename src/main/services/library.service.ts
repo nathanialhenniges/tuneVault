@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { writeFileSync, existsSync, mkdirSync, unlinkSync, readFileSync } from 'fs'
+import { writeFileSync, existsSync, mkdirSync, unlinkSync, readFileSync, renameSync } from 'fs'
 import { join } from 'path'
 import type { LibraryData, Playlist, Track } from '../../shared/models'
 
@@ -7,6 +7,8 @@ const LIBRARY_VERSION = 1
 
 export class LibraryService {
   private filePath: string
+  private static cache: LibraryData | null = null
+  private static writeQueue: Promise<void> = Promise.resolve()
 
   constructor() {
     const userDataPath = app.getPath('userData')
@@ -14,47 +16,94 @@ export class LibraryService {
     this.filePath = join(userDataPath, 'library.json')
   }
 
+  private loadFromDisk(): LibraryData {
+    // Try main file first
+    if (existsSync(this.filePath)) {
+      try {
+        const raw = readFileSync(this.filePath, 'utf-8')
+        return JSON.parse(raw) as LibraryData
+      } catch {
+        // Main file corrupted, try tmp fallback
+      }
+    }
+
+    // Fallback to .tmp file (may exist from interrupted atomic write)
+    const tmpPath = this.filePath + '.tmp'
+    if (existsSync(tmpPath)) {
+      try {
+        const raw = readFileSync(tmpPath, 'utf-8')
+        const data = JSON.parse(raw) as LibraryData
+        // Recover: promote tmp to main
+        try { renameSync(tmpPath, this.filePath) } catch { /* best effort */ }
+        return data
+      } catch {
+        // tmp also corrupted
+      }
+    }
+
+    return { playlists: [], version: LIBRARY_VERSION }
+  }
+
   private loadRaw(): LibraryData {
-    if (!existsSync(this.filePath)) {
-      return { playlists: [], version: LIBRARY_VERSION }
-    }
-    try {
-      const raw = readFileSync(this.filePath, 'utf-8')
-      return JSON.parse(raw) as LibraryData
-    } catch {
-      return { playlists: [], version: LIBRARY_VERSION }
-    }
+    if (LibraryService.cache) return LibraryService.cache
+    const data = this.loadFromDisk()
+    LibraryService.cache = data
+    return data
   }
 
   load(): LibraryData {
     const data = this.loadRaw()
-    for (const playlist of data.playlists) {
-      playlist.tracks.sort((a, b) => a.position - b.position)
+    // Return a deep-ish copy with sorted tracks
+    const result: LibraryData = {
+      ...data,
+      playlists: data.playlists.map((p) => ({
+        ...p,
+        tracks: [...p.tracks].sort((a, b) => a.position - b.position)
+      }))
     }
-    return data
+    return result
+  }
+
+  /** Atomic write: write to .tmp then rename over the target */
+  private writeToDisk(data: LibraryData): void {
+    const tmpPath = this.filePath + '.tmp'
+    writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8')
+    renameSync(tmpPath, this.filePath)
   }
 
   save(data: LibraryData): void {
-    writeFileSync(this.filePath, JSON.stringify(data, null, 2), 'utf-8')
+    LibraryService.cache = data
+    this.writeToDisk(data)
+  }
+
+  /** Enqueue a mutation to run serially, preventing concurrent read-modify-write races */
+  private enqueueWrite(mutate: (data: LibraryData) => void): void {
+    LibraryService.writeQueue = LibraryService.writeQueue.then(() => {
+      const data = this.loadRaw()
+      mutate(data)
+      LibraryService.cache = data
+      this.writeToDisk(data)
+    }).catch(() => {
+      // Ensure queue doesn't get stuck on error
+    })
   }
 
   upsertTrack(playlist: Playlist, track: Track): void {
-    const data = this.loadRaw()
-    let existingPlaylist = data.playlists.find((p) => p.id === playlist.id)
+    this.enqueueWrite((data) => {
+      let existingPlaylist = data.playlists.find((p) => p.id === playlist.id)
 
-    if (!existingPlaylist) {
-      existingPlaylist = { ...playlist, tracks: [] }
-      data.playlists.push(existingPlaylist)
-    }
+      if (!existingPlaylist) {
+        existingPlaylist = { ...playlist, tracks: [] }
+        data.playlists.push(existingPlaylist)
+      }
 
-    const trackIdx = existingPlaylist.tracks.findIndex((t) => t.id === track.id)
-    if (trackIdx >= 0) {
-      existingPlaylist.tracks[trackIdx] = track
-    } else {
-      existingPlaylist.tracks.push(track)
-    }
-
-    this.save(data)
+      const trackIdx = existingPlaylist.tracks.findIndex((t) => t.id === track.id)
+      if (trackIdx >= 0) {
+        existingPlaylist.tracks[trackIdx] = track
+      } else {
+        existingPlaylist.tracks.push(track)
+      }
+    })
   }
 
   deleteTracks(trackIds: string[]): void {

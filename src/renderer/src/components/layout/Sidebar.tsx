@@ -28,8 +28,8 @@ export function Sidebar(): JSX.Element {
   const recentPlaylists = library.playlists.slice(0, 5)
 
   return (
-    <aside className="relative w-56 glass-chrome glass-border-sidebar flex flex-col transition-colors duration-200">
-      <div className="drag-region h-12 flex items-center pl-20 pr-4 border-b border-[var(--glass-border-edge)]">
+    <aside className="relative w-48 glass-chrome glass-border-sidebar flex flex-col transition-colors duration-200">
+      <div className="drag-region h-12 flex items-center pl-[72px] pr-4 border-b border-[var(--glass-border-edge)]">
         <h1 className="text-sm font-bold tracking-wide text-accent no-drag">TuneVault</h1>
       </div>
 
@@ -40,10 +40,11 @@ export function Sidebar(): JSX.Element {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
+              aria-current={isActive ? 'page' : undefined}
               className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors rounded-[10px] ${
                 isActive
                   ? 'bg-accent/10 text-accent shadow-[inset_0_0_0_1px_rgba(249,115,22,0.15)]'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-glass-hover'
               }`}
             >
               <item.Icon className="w-5 h-5" />
@@ -67,7 +68,7 @@ export function Sidebar(): JSX.Element {
             <button
               key={pl.id}
               onClick={() => navigate('/library', { state: { playlistFilter: pl.id } })}
-              className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-[10px] truncate transition-colors"
+              className="w-full text-left px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary hover:bg-glass-hover rounded-[10px] truncate transition-colors"
             >
               {pl.title}
             </button>

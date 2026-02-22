@@ -3,7 +3,7 @@ import { useDownloadStore } from '../../store/downloadStore'
 import { usePlaylistStore } from '../../store/playlistStore'
 import { useDownload } from '../../hooks/useDownload'
 import { DownloadItem } from './DownloadItem'
-import { ArrowPathIcon } from '@heroicons/react/24/outline'
+import { ArrowPathIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 
 export function DownloadQueue(): JSX.Element {
   const downloads = useDownloadStore((s) => s.downloads)
@@ -74,7 +74,8 @@ export function DownloadQueue(): JSX.Element {
       </div>
 
       {entries.length === 0 ? (
-        <div className="text-center py-20 text-text-muted">
+        <div className="flex flex-col items-center justify-center py-20 text-text-muted">
+          <ArrowDownTrayIcon className="w-12 h-12 mb-3 opacity-30" />
           <p className="text-lg">No downloads in progress</p>
           <p className="text-sm mt-1">Fetch a playlist and click "Download All" to start</p>
         </div>

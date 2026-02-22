@@ -26,7 +26,7 @@ export function TrackDetailModal({ track, onClose }: TrackDetailModalProps): JSX
       style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="glass-modal glass-border-float max-w-lg w-full mx-4 max-h-[80vh] flex flex-col glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="track-detail-title" className="glass-modal glass-border-float max-w-lg w-full mx-4 max-h-[80vh] flex flex-col glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
         {/* Header */}
         <div className="flex items-start gap-4 p-6 pb-4">
           <img
@@ -35,13 +35,13 @@ export function TrackDetailModal({ track, onClose }: TrackDetailModalProps): JSX
             className="w-16 h-16 rounded-lg object-cover bg-bg-inset shrink-0"
           />
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-semibold truncate">{track.title}</h2>
+            <h2 id="track-detail-title" className="text-lg font-semibold truncate">{track.title}</h2>
             <p className="text-sm text-text-secondary truncate">{track.artist}</p>
             <p className="text-xs text-text-muted mt-1">{track.playlistTitle}</p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-text-muted hover:text-text-primary transition rounded-lg hover:bg-white/5 shrink-0"
+            className="p-1.5 text-text-muted hover:text-text-primary transition rounded-lg hover:bg-glass-hover shrink-0"
           >
             <XMarkIcon className="w-5 h-5" />
           </button>
@@ -70,7 +70,7 @@ export function TrackDetailModal({ track, onClose }: TrackDetailModalProps): JSX
             <div className="flex items-center gap-2 text-sm">
               <SignalIcon className="w-4 h-4 text-text-muted shrink-0" />
               <span className="text-text-secondary">Bitrate</span>
-              <span className="ml-auto text-text-primary">{track.bitrate}kbs</span>
+              <span className="ml-auto text-text-primary">{track.bitrate}kbps</span>
             </div>
           )}
           {track.format && (
@@ -100,7 +100,7 @@ export function TrackDetailModal({ track, onClose }: TrackDetailModalProps): JSX
         {track.description && (
           <div className="px-6 pt-4 pb-2 flex-1 min-h-0 flex flex-col">
             <h3 className="text-sm font-medium text-text-primary mb-2">Description</h3>
-            <div className="flex-1 overflow-y-auto rounded-lg bg-white/5 border border-[var(--glass-border-edge)] p-3">
+            <div className="flex-1 overflow-y-auto rounded-lg bg-glass-hover border border-[var(--glass-border-edge)] p-3">
               <p className="text-xs text-text-secondary whitespace-pre-wrap leading-relaxed">
                 {track.description}
               </p>
@@ -112,7 +112,7 @@ export function TrackDetailModal({ track, onClose }: TrackDetailModalProps): JSX
         <div className="p-6 pt-4">
           <button
             onClick={onClose}
-            className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-text-secondary rounded-lg text-sm transition"
+            className="w-full py-2.5 bg-glass-hover hover:bg-glass-active text-text-secondary rounded-lg text-sm transition"
           >
             Close
           </button>

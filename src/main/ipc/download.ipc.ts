@@ -28,7 +28,7 @@ function formatDate(raw: string, format: DateFormat): string {
 }
 
 const activeDownloads = new Map<string, AbortController>()
-const activeBatches = new Map<string, () => void>()
+const activeBatches = new Map<string, { cancel: () => void; remaining: number }>()
 const cancelledTracks = new Set<string>()
 const RATE_LIMIT_WAIT_MS = 60_000 // Wait 60 seconds on rate limit
 const MAX_RETRIES = 3
@@ -37,9 +37,26 @@ export function hasActiveDownloads(): boolean {
   return activeDownloads.size > 0 || activeBatches.size > 0
 }
 
+/** Abort all active downloads — called on app quit to prevent orphaned child processes */
+export function abortAllDownloads(): void {
+  for (const [, batch] of activeBatches) {
+    batch.cancel()
+  }
+  activeBatches.clear()
+  for (const [trackId, controller] of activeDownloads) {
+    controller.abort()
+    activeDownloads.delete(trackId)
+  }
+}
+
 export function registerDownloadIpc(mainWindow: BrowserWindow): void {
   ipcMain.handle(IpcChannels.DOWNLOAD_START, async (_event, request: DownloadRequest) => {
-    const { playlist, format, outputDir, concurrency, forceRedownload, dateFormat, releaseDateSource } = request
+    if (!request || !request.playlist || !Array.isArray(request.playlist.tracks)) {
+      throw new Error('Invalid download request')
+    }
+    const { playlist, format, outputDir, forceRedownload, dateFormat, releaseDateSource } = request
+    // Clamp concurrency to safe range (1–8)
+    const concurrency = Math.max(1, Math.min(8, request.concurrency || 3))
     const ytdlp = new YtdlpService()
     const ffmpeg = new FfmpegService()
     const library = new LibraryService()
@@ -52,9 +69,17 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
     let idx = 0
     let cancelled = false
 
-    // Store a reference so cancelAll can stop the queue
+    // 1.2 — Track remaining items per batch for proper cleanup
     const batchId = playlist.id
-    activeBatches.set(batchId, () => { cancelled = true })
+    const batchState = { cancel: () => { cancelled = true }, remaining: totalTracks }
+    activeBatches.set(batchId, batchState)
+
+    const onTrackDone = (): void => {
+      batchState.remaining--
+      if (batchState.remaining <= 0) {
+        activeBatches.delete(batchId)
+      }
+    }
 
     const processNext = (): void => {
       if (cancelled) return
@@ -64,6 +89,7 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
         // Skip tracks that were individually cancelled while queued
         if (!activeDownloads.has(track.id) && cancelledTracks.has(track.id)) {
           cancelledTracks.delete(track.id)
+          onTrackDone()
           continue
         }
 
@@ -87,6 +113,7 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
             trackId: track.id,
             filePath: expectedPath
           })
+          onTrackDone()
           continue
         }
 
@@ -219,6 +246,7 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
           .finally(() => {
             active--
             activeDownloads.delete(track.id)
+            onTrackDone()
             processNext()
           })
       }
@@ -240,16 +268,6 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
   })
 
   ipcMain.handle(IpcChannels.DOWNLOAD_CANCEL_ALL, async () => {
-    // Stop all batch queues from pulling new tracks
-    for (const [, stop] of activeBatches) {
-      stop()
-    }
-    activeBatches.clear()
-
-    // Abort all active downloads
-    for (const [trackId, controller] of activeDownloads) {
-      controller.abort()
-      activeDownloads.delete(trackId)
-    }
+    abortAllDownloads()
   })
 }

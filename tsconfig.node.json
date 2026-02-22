@@ -8,10 +8,11 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
     "outDir": "./out",
     "rootDir": ".",
     "declaration": true,
-    "declarationMap": true,
     "sourceMap": true,
     "types": ["node"]
   },

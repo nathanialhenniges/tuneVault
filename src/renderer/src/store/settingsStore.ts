@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { AppSettings } from '../../../shared/models'
 import { DEFAULT_SETTINGS } from '../../../shared/models'
+import { toast } from './toastStore'
 
 function applyTheme(theme: 'dark' | 'light' | 'system'): void {
   const root = document.documentElement
@@ -44,6 +45,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       applyTheme(settings.theme)
     }
     set({ settings })
+    toast.success('Settings saved')
   },
 
   selectMusicDir: async () => {

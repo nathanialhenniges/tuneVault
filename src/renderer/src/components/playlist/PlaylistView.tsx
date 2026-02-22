@@ -135,7 +135,7 @@ export function PlaylistView(): JSX.Element {
       )}
 
       {downloadSummary && !loading && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-bg-surface border border-border-default text-sm">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-glass-hover border border-[var(--glass-border-edge)] text-sm">
           <span className="text-accent font-medium">Download complete</span>
           <span className="text-text-secondary">
             {downloadSummary.done}/{downloadSummary.total} downloaded
@@ -148,19 +148,19 @@ export function PlaylistView(): JSX.Element {
       {currentPlaylist && (
         <div className="space-y-4">
           {/* Playlist header — sticky */}
-          <div className="sticky top-0 z-10 pb-3" style={{ background: 'var(--glass-sidebar-bg)', backdropFilter: 'blur(var(--glass-blur-chrome))', WebkitBackdropFilter: 'blur(var(--glass-blur-chrome))' }}>
+          <div className="sticky top-0 z-10 pb-2" style={{ background: 'var(--glass-sidebar-bg)', backdropFilter: 'blur(var(--glass-blur-chrome))', WebkitBackdropFilter: 'blur(var(--glass-blur-chrome))' }}>
             <div className="flex items-center gap-4">
               <img
                 src={currentPlaylist.thumbnailUrl}
                 alt=""
-                className="w-20 h-20 object-cover"
+                className="w-16 h-16 object-cover"
                 style={{ borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-glass-lg)' }}
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-semibold truncate">{currentPlaylist.title}</h3>
                   {loadedFromCache && (
-                    <span className="text-[10px] text-text-muted px-1.5 py-0.5 bg-white/5 border border-[var(--glass-border-edge)] rounded shrink-0">cached</span>
+                    <span className="text-[10px] text-text-muted px-1.5 py-0.5 bg-glass-hover border border-[var(--glass-border-edge)] rounded shrink-0">cached</span>
                   )}
                 </div>
                 <p className="text-sm text-text-secondary">{currentPlaylist.channelTitle}</p>

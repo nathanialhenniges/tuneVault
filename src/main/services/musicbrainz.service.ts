@@ -1,6 +1,6 @@
 import https from 'https'
 
-const USER_AGENT = 'TuneVault/1.0 (contact@example.com)'
+const USER_AGENT = 'TuneVault/2.0 (nathanialhenniges@users.noreply.github.com)'
 
 export class MusicBrainzService {
   async lookupReleaseDate(artist: string, title: string): Promise<string | null> {

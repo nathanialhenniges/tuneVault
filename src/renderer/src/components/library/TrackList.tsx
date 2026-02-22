@@ -73,7 +73,7 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
             className={`flex items-center gap-4 px-4 py-2.5 rounded-[var(--radius-item)] transition group ${
               isCurrent
                 ? 'bg-accent/10 text-accent border-l-2 border-accent'
-                : 'hover:bg-white/5'
+                : 'hover:bg-glass-hover'
             }`}
           >
             <Checkbox checked={isSelected} onChange={() => toggleTrackSelection(track.id)} />
@@ -93,6 +93,7 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
                 src={track.thumbnailUrl}
                 alt=""
                 className="w-9 h-9 rounded object-cover bg-bg-surface"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
               />
               <div className="min-w-0">
                 <p className="text-sm truncate">{track.title}</p>
@@ -105,10 +106,10 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
               {formatDuration(track.duration)}
             </span>
             <span className="w-14 text-right text-xs text-text-muted">
-              {track.bitrate ? `${track.bitrate}kbs` : ''}
+              {track.bitrate ? `${track.bitrate}kbps` : ''}
             </span>
 
-            <div className="w-20 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition">
+            <div className="w-20 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition">
               {track.filePath && (
                 <button
                   onClick={() => openFolder(track.filePath!)}

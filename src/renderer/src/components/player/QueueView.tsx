@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { usePlayerStore } from '../../store/playerStore'
 
 interface QueueViewProps {
@@ -10,6 +11,25 @@ export function QueueView({ open, onClose }: QueueViewProps): JSX.Element | null
   const queueIndex = usePlayerStore((s) => s.queueIndex)
   const setQueue = usePlayerStore((s) => s.setQueue)
   const play = usePlayerStore((s) => s.play)
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handleClick = (e: MouseEvent): void => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+    const handleKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('mousedown', handleClick)
+    window.addEventListener('keydown', handleKey)
+    return () => {
+      window.removeEventListener('mousedown', handleClick)
+      window.removeEventListener('keydown', handleKey)
+    }
+  }, [open, onClose])
 
   if (!open) return null
 
@@ -17,6 +37,7 @@ export function QueueView({ open, onClose }: QueueViewProps): JSX.Element | null
 
   return (
     <div
+      ref={panelRef}
       className="absolute bottom-full right-0 mb-2 w-80 max-h-96 glass-float glass-border-float overflow-hidden transition-colors duration-200 glass-reveal"
       style={{ borderRadius: 'var(--radius-panel)' }}
     >
@@ -38,7 +59,7 @@ export function QueueView({ open, onClose }: QueueViewProps): JSX.Element | null
                 setQueue(queue, queueIndex + 1 + i)
                 play()
               }}
-              className="w-full flex items-center gap-3 px-4 py-2 hover:bg-white/5 transition text-left"
+              className="w-full flex items-center gap-3 px-4 py-2 hover:bg-glass-hover transition text-left"
             >
               <span className="text-xs text-text-muted w-5">{i + 1}</span>
               <img

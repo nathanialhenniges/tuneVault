@@ -21,6 +21,7 @@ export function registerLibraryIpc(): void {
   })
 
   ipcMain.handle(IpcChannels.LIBRARY_DELETE_TRACKS, async (_event, trackIds: string[]) => {
+    if (!Array.isArray(trackIds)) throw new Error('trackIds must be an array')
     library.deleteTracks(trackIds)
   })
 

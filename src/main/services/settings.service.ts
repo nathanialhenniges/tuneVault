@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
 import { join } from 'path'
 import type { AppSettings } from '../../shared/models'
 import { DEFAULT_SETTINGS } from '../../shared/models'
@@ -11,32 +11,56 @@ export class SettingsService {
     return join(userDataPath, 'settings.json')
   }
 
+  private static getDefaults(): AppSettings {
+    return {
+      ...DEFAULT_SETTINGS,
+      musicDir: join(app.getPath('music'), 'TuneVault')
+    }
+  }
+
   static load(): AppSettings {
     const filePath = this.getFilePath()
+    const defaults = this.getDefaults()
+
     if (!existsSync(filePath)) {
-      // Set default music dir
-      const defaultSettings: AppSettings = {
-        ...DEFAULT_SETTINGS,
-        musicDir: join(app.getPath('music'), 'TuneVault')
+      // Try .tmp fallback
+      const tmpPath = filePath + '.tmp'
+      if (existsSync(tmpPath)) {
+        try {
+          const raw = readFileSync(tmpPath, 'utf-8')
+          const stored = JSON.parse(raw) as Partial<AppSettings>
+          try { renameSync(tmpPath, filePath) } catch { /* best effort */ }
+          return { ...defaults, ...stored }
+        } catch { /* fall through */ }
       }
-      return defaultSettings
+      return defaults
     }
+
     try {
       const raw = readFileSync(filePath, 'utf-8')
       const stored = JSON.parse(raw) as Partial<AppSettings>
-      return {
-        ...DEFAULT_SETTINGS,
-        musicDir: join(app.getPath('music'), 'TuneVault'),
-        ...stored
-      }
+      return { ...defaults, ...stored }
     } catch {
-      return { ...DEFAULT_SETTINGS, musicDir: join(app.getPath('music'), 'TuneVault') }
+      // Main file corrupted, try .tmp fallback
+      const tmpPath = filePath + '.tmp'
+      if (existsSync(tmpPath)) {
+        try {
+          const raw = readFileSync(tmpPath, 'utf-8')
+          const stored = JSON.parse(raw) as Partial<AppSettings>
+          try { renameSync(tmpPath, filePath) } catch { /* best effort */ }
+          return { ...defaults, ...stored }
+        } catch { /* fall through */ }
+      }
+      return defaults
     }
   }
 
   static save(partial: Partial<AppSettings>): void {
     const current = this.load()
     const merged = { ...current, ...partial }
-    writeFileSync(this.getFilePath(), JSON.stringify(merged, null, 2), 'utf-8')
+    const filePath = this.getFilePath()
+    const tmpPath = filePath + '.tmp'
+    writeFileSync(tmpPath, JSON.stringify(merged, null, 2), 'utf-8')
+    renameSync(tmpPath, filePath)
   }
 }

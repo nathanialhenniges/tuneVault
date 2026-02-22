@@ -41,7 +41,15 @@ export function useDownload() {
       })
     }
 
-    await window.api.startDownload(request)
+    try {
+      await window.api.startDownload(request)
+    } catch (err) {
+      console.error('Failed to start download:', err)
+      // Mark all tracks as errored so UI reflects the failure
+      for (const track of tracks) {
+        useDownloadStore.getState().setError(track.id, err instanceof Error ? err.message : 'Download failed')
+      }
+    }
   }
 
   return { startDownload, isDownloading }

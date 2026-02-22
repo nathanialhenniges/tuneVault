@@ -9,7 +9,8 @@ import {
   FolderOpenIcon,
   DocumentTextIcon,
   CheckIcon,
-  XMarkIcon
+  XMarkIcon,
+  MusicalNoteIcon
 } from '@heroicons/react/24/outline'
 import { useSettingsStore } from '../../store/settingsStore'
 import { useLocation } from 'react-router-dom'
@@ -51,7 +52,12 @@ export function LibraryView(): JSX.Element {
   }
 
   const handleDeleteAll = async (): Promise<void> => {
-    await deleteAll()
+    if (playlistFilter !== 'all') {
+      // Only delete tracks visible under the current playlist filter
+      await deleteTracks(tracks.map((t) => t.id))
+    } else {
+      await deleteAll()
+    }
     setShowDeleteAllConfirm(false)
   }
 
@@ -113,7 +119,8 @@ export function LibraryView(): JSX.Element {
               <select
                 value={playlistFilter}
                 onChange={(e) => setPlaylistFilter(e.target.value)}
-                className="appearance-none bg-bg-surface border border-border-default rounded-lg px-3 py-1.5 pr-7 text-xs text-text-secondary hover:text-text-primary focus:outline-none focus:border-accent cursor-pointer transition"
+                className="appearance-none border border-[var(--glass-border-edge)] rounded-lg px-3 py-1.5 pr-7 text-xs text-text-secondary hover:text-text-primary focus:outline-none focus:border-accent cursor-pointer transition"
+                style={{ background: 'var(--glass-input-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
               >
                 <option value="all">All Playlists</option>
                 {library.playlists.map((pl) => (
@@ -169,7 +176,7 @@ export function LibraryView(): JSX.Element {
                 className="px-3 py-1.5 text-xs text-red-400 border border-red-500/25 rounded-lg hover:bg-red-500/10 hover:border-red-500/40 transition-all flex items-center gap-1.5"
               >
                 <TrashIcon className="w-3.5 h-3.5" />
-                Delete All
+                {playlistFilter !== 'all' ? `Delete All ${tracks.length}` : 'Delete All'}
               </button>
             </>
           )}
@@ -177,7 +184,8 @@ export function LibraryView(): JSX.Element {
       </div>
 
       {tracks.length === 0 ? (
-        <div className="text-center py-20 text-text-muted">
+        <div className="flex flex-col items-center justify-center py-20 text-text-muted">
+          <MusicalNoteIcon className="w-12 h-12 mb-3 opacity-30" />
           <p className="text-lg">Your library is empty</p>
           <p className="text-sm mt-1">Download some playlists to get started</p>
         </div>
@@ -189,9 +197,13 @@ export function LibraryView(): JSX.Element {
       {showDeleteAllConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
           <div className="glass-modal glass-border-float p-6 max-w-md mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
-            <h3 className="text-lg font-semibold mb-2">Delete Entire Library?</h3>
+            <h3 className="text-lg font-semibold mb-2">
+              {playlistFilter !== 'all' ? `Delete ${tracks.length} Playlist Tracks?` : 'Delete Entire Library?'}
+            </h3>
             <p className="text-sm text-text-secondary mb-6">
-              This will permanently delete all {tracks.length} tracks and their audio files from disk. This action cannot be undone.
+              {playlistFilter !== 'all'
+                ? `This will permanently delete all ${tracks.length} tracks from this playlist and their audio files from disk. This action cannot be undone.`
+                : `This will permanently delete all ${tracks.length} tracks and their audio files from disk. This action cannot be undone.`}
             </p>
             <div className="flex justify-end gap-3">
               <button
@@ -204,7 +216,7 @@ export function LibraryView(): JSX.Element {
                 onClick={handleDeleteAll}
                 className="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
               >
-                Delete Everything
+                {playlistFilter !== 'all' ? 'Delete Playlist Tracks' : 'Delete Everything'}
               </button>
             </div>
           </div>
@@ -226,13 +238,13 @@ export function LibraryView(): JSX.Element {
               </div>
               <button
                 onClick={() => { setPlaylistInfoContent(null); setPlaylistInfoPath(null) }}
-                className="p-1.5 text-text-muted hover:text-text-primary transition rounded-lg hover:bg-white/5"
+                className="p-1.5 text-text-muted hover:text-text-primary transition rounded-lg hover:bg-glass-hover"
               >
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto min-h-0 bg-white/5 border border-[var(--glass-border-edge)] rounded-lg p-5">
+            <div className="flex-1 overflow-y-auto min-h-0 bg-glass-hover border border-[var(--glass-border-edge)] rounded-lg p-5">
               <div className="markdown-prose">
                 <Markdown remarkPlugins={[remarkGfm]}>{playlistInfoContent}</Markdown>
               </div>

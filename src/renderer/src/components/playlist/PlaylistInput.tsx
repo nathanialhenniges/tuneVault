@@ -55,6 +55,7 @@ export function PlaylistInput(): JSX.Element {
               if (recentPlaylists.length > 0 && !loading) setShowRecent(true)
             }}
             placeholder="Paste YouTube playlist URL..."
+            aria-label="YouTube playlist URL"
             className="w-full border border-[var(--glass-border-edge)] rounded-lg px-4 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed transition"
             style={{ background: 'var(--glass-sidebar-bg)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}
           />
@@ -69,7 +70,7 @@ export function PlaylistInput(): JSX.Element {
                   key={recent.url}
                   type="button"
                   onClick={() => handleSelectRecent(recent.url)}
-                  className="w-full text-left px-3 py-2.5 text-sm hover:bg-white/5 transition truncate"
+                  className="w-full text-left px-3 py-2.5 text-sm hover:bg-glass-hover transition truncate"
                 >
                   <span className="text-text-primary">{recent.title}</span>
                   <span className="block text-xs text-text-muted truncate mt-0.5">{recent.url}</span>

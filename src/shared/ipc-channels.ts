@@ -1,7 +1,6 @@
 export const IpcChannels = {
   // Playlist
   PLAYLIST_FETCH: 'playlist:fetch',
-  PLAYLIST_FETCH_RESULT: 'playlist:fetch-result',
 
   // Download
   DOWNLOAD_START: 'download:start',
@@ -13,8 +12,6 @@ export const IpcChannels = {
 
   // Library
   LIBRARY_GET: 'library:get',
-  LIBRARY_GET_RESULT: 'library:get-result',
-  LIBRARY_SAVE: 'library:save',
   LIBRARY_GET_TRACK_PATH: 'library:get-track-path',
   LIBRARY_DELETE_TRACKS: 'library:delete-tracks',
   LIBRARY_DELETE_ALL: 'library:delete-all',
