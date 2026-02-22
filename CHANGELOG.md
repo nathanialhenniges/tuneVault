@@ -2,6 +2,13 @@
 
 All notable changes to TuneVault will be documented in this file.
 
+## [1.2.0] - 2026-02-22
+
+### Added
+- Background downloads: closing the window during active downloads hides it to the system tray instead of quitting
+- App version number displayed in the sidebar footer
+- Restore the window anytime via the tray icon; use Quit from tray or Cmd+Q to force exit
+
 ## [1.1.0] - 2026-02-22
 
 ### Added
