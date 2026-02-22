@@ -127,12 +127,12 @@ select:focus-visible,
   --glass-player-bg: rgba(15, 15, 18, 0.6);
   --glass-titlebar-bg: rgba(15, 15, 18, 0.45);
   --glass-float-bg: rgba(20, 20, 24, 0.72);
-  --glass-modal-bg: rgba(20, 20, 24, 0.78);
+  --glass-modal-bg: rgba(24, 24, 30, 0.82);
   --glass-blur-chrome: 18px;
   --glass-blur-float: 24px;
-  --glass-blur-modal: 28px;
-  --glass-border-light: rgba(255, 255, 255, 0.06);
-  --glass-border-edge: rgba(255, 255, 255, 0.03);
+  --glass-blur-modal: 32px;
+  --glass-border-light: rgba(255, 255, 255, 0.08);
+  --glass-border-edge: rgba(255, 255, 255, 0.06);
   --glass-shimmer: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0) 60%);
 
   /* Shadow scale — dark */
@@ -209,6 +209,7 @@ body::before {
   backdrop-filter: blur(var(--glass-blur-modal));
   -webkit-backdrop-filter: blur(var(--glass-blur-modal));
   box-shadow: var(--shadow-glass-xl);
+  border: 1px solid var(--glass-border-light);
 }
 
 /* Glass borders */

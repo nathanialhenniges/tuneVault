@@ -90,8 +90,8 @@ export function DownloadQueue(): JSX.Element {
       )}
 
       {showRedownloadConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
-          <div className="glass-modal glass-border-float p-6 max-w-md mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+          <div className="glass-modal p-6 max-w-md mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
             <h3 className="text-lg font-semibold mb-2">Redownload All Tracks?</h3>
             <p className="text-sm text-text-secondary mb-6">
               This will re-download all {playlist?.tracks.length ?? 0} tracks and overwrite the existing files on disk.
