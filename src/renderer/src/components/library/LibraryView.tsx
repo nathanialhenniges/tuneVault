@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useLibraryStore } from '../../store/libraryStore'
 import { SearchBar } from './SearchBar'
 import { TrackList } from './TrackList'
@@ -16,6 +16,23 @@ import { useSettingsStore } from '../../store/settingsStore'
 import { useLocation } from 'react-router-dom'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
+
+function FocusTrapModal({ children, onClose }: { children: React.ReactNode; onClose: () => void }): JSX.Element {
+  const ref = useRef<HTMLDivElement>(null)
+  useFocusTrap(ref, onClose)
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+      style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div ref={ref}>
+        {children}
+      </div>
+    </div>
+  )
+}
 
 export function LibraryView(): JSX.Element {
   const { loaded, load, getFilteredTracks, library, selectedTrackIds, selectAllTracks, clearSelection, deleteTracks, deleteAll, openFolder } = useLibraryStore()
@@ -195,7 +212,7 @@ export function LibraryView(): JSX.Element {
 
       {/* Delete All Confirmation Modal */}
       {showDeleteAllConfirm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+        <FocusTrapModal onClose={() => setShowDeleteAllConfirm(false)}>
           <div className="glass-modal p-6 max-w-md mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
             <h3 className="text-lg font-semibold mb-2">
               {playlistFilter !== 'all' ? `Delete ${tracks.length} Playlist Tracks?` : 'Delete Entire Library?'}
@@ -220,16 +237,12 @@ export function LibraryView(): JSX.Element {
               </button>
             </div>
           </div>
-        </div>
+        </FocusTrapModal>
       )}
 
       {/* Playlist Info Viewer Modal */}
       {playlistInfoContent && (
-        <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-          style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
-          onClick={(e) => { if (e.target === e.currentTarget) { setPlaylistInfoContent(null); setPlaylistInfoPath(null) } }}
-        >
+        <FocusTrapModal onClose={() => { setPlaylistInfoContent(null); setPlaylistInfoPath(null) }}>
           <div className="glass-modal p-6 max-w-3xl w-full mx-4 max-h-[85vh] flex flex-col glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
             <div className="flex items-center justify-between mb-4 shrink-0">
               <div className="flex items-center gap-2">
@@ -260,12 +273,12 @@ export function LibraryView(): JSX.Element {
               </button>
             </div>
           </div>
-        </div>
+        </FocusTrapModal>
       )}
 
       {/* Delete Selected Confirmation Modal */}
       {showDeleteSelectedConfirm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
+        <FocusTrapModal onClose={() => setShowDeleteSelectedConfirm(false)}>
           <div className="glass-modal p-6 max-w-md mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
             <h3 className="text-lg font-semibold mb-2">Delete {selectedTrackIds.size} tracks?</h3>
             <p className="text-sm text-text-secondary mb-6">
@@ -286,7 +299,7 @@ export function LibraryView(): JSX.Element {
               </button>
             </div>
           </div>
-        </div>
+        </FocusTrapModal>
       )}
     </div>
   )

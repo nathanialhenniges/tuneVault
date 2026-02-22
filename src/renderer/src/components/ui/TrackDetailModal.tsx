@@ -1,5 +1,7 @@
+import { useRef } from 'react'
 import type { Track } from '../../../../shared/models'
 import { formatDuration } from '../../../../shared/utils'
+import { useFocusTrap } from '../../hooks/useFocusTrap'
 import {
   XMarkIcon,
   ClockIcon,
@@ -15,13 +17,16 @@ interface TrackDetailModalProps {
 }
 
 export function TrackDetailModal({ track, onClose }: TrackDetailModalProps): JSX.Element {
+  const modalRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(modalRef, onClose)
+
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100]"
       style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div role="dialog" aria-modal="true" aria-labelledby="track-detail-title" className="glass-modal max-w-lg w-full mx-4 max-h-[80vh] flex flex-col glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
+      <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="track-detail-title" className="glass-modal max-w-lg w-full mx-4 max-h-[80vh] flex flex-col glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
         {/* Header */}
         <div className="flex items-start gap-4 p-6 pb-4">
           <img

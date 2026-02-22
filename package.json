@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "@tanstack/react-virtual": "^3.13.18",
     "howler": "^2.2.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

@@ -14,10 +14,15 @@ interface PlayerState {
   duration: number
   shuffle: boolean
   repeat: RepeatMode
+  playbackRate: number
+  crossfadeDuration: number
 
   setTrack: (track: Track) => void
   setQueue: (tracks: Track[], startIndex?: number) => void
   addToQueue: (track: Track) => void
+  removeFromQueue: (index: number) => void
+  moveInQueue: (fromIndex: number, toIndex: number) => void
+  clearUpcoming: () => void
   play: () => void
   pause: () => void
   togglePlay: () => void
@@ -29,6 +34,8 @@ interface PlayerState {
   toggleShuffle: () => void
   setRepeat: (mode: RepeatMode) => void
   setIsPlaying: (playing: boolean) => void
+  setPlaybackRate: (rate: number) => void
+  setCrossfadeDuration: (seconds: number) => void
 }
 
 function shuffleArray<T>(arr: T[]): T[] {
@@ -51,6 +58,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   duration: 0,
   shuffle: false,
   repeat: 'off',
+  playbackRate: 1,
+  crossfadeDuration: 0,
 
   setTrack: (track) => set({ currentTrack: track }),
 
@@ -78,6 +87,39 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       queue: [...state.queue, track],
       originalQueue: [...state.originalQueue, track]
     })),
+
+  removeFromQueue: (index) => {
+    const { queue, queueIndex } = get()
+    if (index < 0 || index >= queue.length || index === queueIndex) return
+    const newQueue = [...queue]
+    newQueue.splice(index, 1)
+    const newQueueIndex = index < queueIndex ? queueIndex - 1 : queueIndex
+    set({ queue: newQueue, queueIndex: newQueueIndex })
+  },
+
+  moveInQueue: (fromIndex, toIndex) => {
+    const { queue, queueIndex } = get()
+    if (fromIndex === toIndex) return
+    if (fromIndex < 0 || fromIndex >= queue.length) return
+    if (toIndex < 0 || toIndex >= queue.length) return
+    const newQueue = [...queue]
+    const [moved] = newQueue.splice(fromIndex, 1)
+    newQueue.splice(toIndex, 0, moved)
+    // Adjust queueIndex if current track was affected
+    let newIdx = queueIndex
+    if (queueIndex === fromIndex) {
+      newIdx = toIndex
+    } else {
+      if (fromIndex < queueIndex && toIndex >= queueIndex) newIdx--
+      else if (fromIndex > queueIndex && toIndex <= queueIndex) newIdx++
+    }
+    set({ queue: newQueue, queueIndex: newIdx })
+  },
+
+  clearUpcoming: () => {
+    const { queue, queueIndex } = get()
+    set({ queue: queue.slice(0, queueIndex + 1) })
+  },
 
   play: () => set({ isPlaying: true }),
   pause: () => set({ isPlaying: false }),
@@ -146,5 +188,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
   },
 
-  setRepeat: (mode) => set({ repeat: mode })
+  setRepeat: (mode) => set({ repeat: mode }),
+
+  setPlaybackRate: (rate) => set({ playbackRate: rate }),
+
+  setCrossfadeDuration: (seconds) => set({ crossfadeDuration: seconds })
 }))

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { PlaylistInput } from './PlaylistInput'
 import { TrackRow } from './TrackRow'
 import { usePlaylistStore } from '../../store/playlistStore'
@@ -10,6 +10,7 @@ import { PlaylistLoader } from '../ui/PlaylistLoader'
 import { ContextMenu } from '../ui/ContextMenu'
 import { TrackDetailModal } from '../ui/TrackDetailModal'
 import type { Track } from '../../../../shared/models'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   ArrowPathIcon,
   ClockIcon,
@@ -24,6 +25,72 @@ function formatTotalDuration(seconds: number): string {
   return `${m}m`
 }
 
+function VirtualizedTrackList({
+  trackListRef,
+  tracks,
+  selected,
+  downloads,
+  toggleOne,
+  handleContextMenu
+}: {
+  trackListRef: React.RefObject<HTMLDivElement | null>
+  tracks: Track[]
+  selected: Set<string>
+  downloads: Map<string, import('../../../../shared/models').DownloadProgress>
+  toggleOne: (id: string) => void
+  handleContextMenu: (e: React.MouseEvent, track: Track) => void
+}): JSX.Element {
+  const rowVirtualizer = useVirtualizer({
+    count: tracks.length,
+    getScrollElement: () => trackListRef.current,
+    estimateSize: () => 48,
+    overscan: 10
+  })
+
+  return (
+    <div
+      ref={trackListRef}
+      className="overflow-y-auto"
+      style={{ height: 'calc(100vh - 380px)' }}
+    >
+      <div
+        style={{
+          height: `${rowVirtualizer.getTotalSize()}px`,
+          width: '100%',
+          position: 'relative'
+        }}
+      >
+        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+          const track = tracks[virtualRow.index]
+          return (
+            <div
+              key={track.id}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: `${virtualRow.size}px`,
+                transform: `translateY(${virtualRow.start}px)`
+              }}
+            >
+              <TrackRow
+                track={track}
+                index={virtualRow.index}
+                tracks={tracks}
+                selected={selected.has(track.id)}
+                onToggleSelect={() => toggleOne(track.id)}
+                downloadProgress={downloads.get(track.id)}
+                onContextMenu={handleContextMenu}
+              />
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function PlaylistView(): JSX.Element {
   const { currentPlaylist, loading, loadedFromCache, refreshPlaylist } = usePlaylistStore()
   const { startDownload, isDownloading } = useDownload()
@@ -33,6 +100,7 @@ export function PlaylistView(): JSX.Element {
   const wolfMode = useWolfMode()
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; track: Track } | null>(null)
   const [detailTrack, setDetailTrack] = useState<Track | null>(null)
+  const trackListRef = useRef<HTMLDivElement>(null)
 
   // Reset state when a new playlist is fetched
   useEffect(() => {
@@ -232,20 +300,14 @@ export function PlaylistView(): JSX.Element {
             </div>
           </div>
 
-          <div className="space-y-0.5">
-            {currentPlaylist.tracks.map((track, i) => (
-              <TrackRow
-                key={track.id}
-                track={track}
-                index={i}
-                tracks={currentPlaylist.tracks}
-                selected={selected.has(track.id)}
-                onToggleSelect={() => toggleOne(track.id)}
-                downloadProgress={downloads.get(track.id)}
-                onContextMenu={handleContextMenu}
-              />
-            ))}
-          </div>
+          <VirtualizedTrackList
+            trackListRef={trackListRef}
+            tracks={currentPlaylist.tracks}
+            selected={selected}
+            downloads={downloads}
+            toggleOne={toggleOne}
+            handleContextMenu={handleContextMenu}
+          />
         </div>
       )}
 

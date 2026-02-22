@@ -49,6 +49,21 @@ export function PlayerBar(): JSX.Element {
   const setRepeat = usePlayerStore((s) => s.setRepeat)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
 
+  const playbackRate = usePlayerStore((s) => s.playbackRate)
+  const setPlaybackRate = usePlayerStore((s) => s.setPlaybackRate)
+  const crossfadeDuration = usePlayerStore((s) => s.crossfadeDuration)
+  const setCrossfadeDuration = usePlayerStore((s) => s.setCrossfadeDuration)
+  const [showCrossfadeMenu, setShowCrossfadeMenu] = useState(false)
+
+  const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2]
+  const CROSSFADE_OPTIONS = [0, 2, 4, 6]
+
+  const cycleSpeed = (): void => {
+    const idx = SPEED_OPTIONS.indexOf(playbackRate)
+    const next = SPEED_OPTIONS[(idx + 1) % SPEED_OPTIONS.length]
+    setPlaybackRate(next)
+  }
+
   const handleSeekInput = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const time = parseFloat(e.target.value)
     seekValueRef.current = time
@@ -130,7 +145,48 @@ export function PlayerBar(): JSX.Element {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 w-52 justify-end relative">
+      <div className="flex items-center gap-2 w-64 justify-end relative">
+        <button
+          onClick={cycleSpeed}
+          className={`text-xs font-medium px-1.5 py-0.5 rounded transition min-w-[2.5rem] ${
+            playbackRate !== 1
+              ? 'text-accent bg-accent/10'
+              : 'text-text-muted hover:text-text-secondary'
+          }`}
+          title={`Speed: ${playbackRate}x`}
+          aria-label={`Playback speed: ${playbackRate}x`}
+        >
+          {playbackRate}x
+        </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowCrossfadeMenu(!showCrossfadeMenu)}
+            className={`text-[10px] font-medium px-1.5 py-0.5 rounded transition ${
+              crossfadeDuration > 0
+                ? 'text-accent bg-accent/10'
+                : 'text-text-muted hover:text-text-secondary'
+            }`}
+            title={`Crossfade: ${crossfadeDuration === 0 ? 'Off' : `${crossfadeDuration}s`}`}
+            aria-label="Crossfade duration"
+          >
+            {crossfadeDuration === 0 ? 'CF' : `${crossfadeDuration}s`}
+          </button>
+          {showCrossfadeMenu && (
+            <div className="absolute bottom-full right-0 mb-1 glass-float glass-border-float py-1 min-w-[5rem]" style={{ borderRadius: 'var(--radius-card)' }}>
+              {CROSSFADE_OPTIONS.map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => { setCrossfadeDuration(opt); setShowCrossfadeMenu(false) }}
+                  className={`w-full px-3 py-1 text-xs text-left hover:bg-glass-hover transition ${
+                    crossfadeDuration === opt ? 'text-accent' : 'text-text-secondary'
+                  }`}
+                >
+                  {opt === 0 ? 'Off' : `${opt}s`}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <VolumeControl />
         <button
           onClick={() => setShowQueue(!showQueue)}

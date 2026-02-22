@@ -12,6 +12,11 @@ export class AudioEngine {
   private onLoadCallback: ((duration: number) => void) | null = null
   private onErrorCallback: ((error: string) => void) | null = null
   private _playing = false
+  private _rate = 1
+
+  // For crossfade
+  private nextHowl: Howl | null = null
+  private nextSoundId: number | null = null
 
   load(
     src: string,
@@ -34,6 +39,7 @@ export class AudioEngine {
       src: [src],
       html5: false, // Use Web Audio API — fully buffers the file so seeking always works
       volume: 1,
+      rate: this._rate,
       onend: () => {
         this._playing = false
         this.stopSeekUpdates()
@@ -61,6 +67,115 @@ export class AudioEngine {
         }
       }
     })
+  }
+
+  loadNext(
+    src: string,
+    callbacks?: {
+      onLoad?: (duration: number) => void
+      onEnd?: () => void
+      onSeek?: (seek: number) => void
+      onError?: (error: string) => void
+    }
+  ): void {
+    // Clean up any previous next howl
+    if (this.nextHowl) {
+      this.nextHowl.unload()
+      this.nextHowl = null
+      this.nextSoundId = null
+    }
+
+    // Store callbacks for when crossfade completes and next becomes current
+    const nextCallbacks = { ...callbacks }
+
+    this.nextHowl = new Howl({
+      src: [src],
+      html5: false,
+      volume: 0,
+      rate: this._rate,
+      onend: () => {
+        this._playing = false
+        this.stopSeekUpdates()
+        nextCallbacks.onEnd?.()
+      },
+      onplay: (id) => {
+        this.nextSoundId = id
+      },
+      onload: () => {
+        const duration = this.nextHowl?.duration() ?? 0
+        nextCallbacks.onLoad?.(duration)
+      },
+      onloaderror: (_id, error) => {
+        console.error('Howler load error (next):', error)
+        nextCallbacks.onError?.(String(error))
+      },
+      onplayerror: (_id, error) => {
+        console.error('Howler play error (next):', error)
+        if (this.nextHowl) {
+          this.nextHowl.once('unlock', () => {
+            this.nextHowl?.play()
+          })
+        }
+      }
+    })
+
+    // Store the seek callback for after promotion
+    this._pendingSeekCallback = nextCallbacks.onSeek ?? null
+    this._pendingEndCallback = nextCallbacks.onEnd ?? null
+  }
+
+  private _pendingSeekCallback: SeekCallback | null = null
+  private _pendingEndCallback: AudioEventCallback | null = null
+
+  crossfadeTo(duration: number): void {
+    if (!this.nextHowl) return
+
+    const currentHowl = this.howl
+    const nextHowl = this.nextHowl
+    const currentVolume = currentHowl?.volume() ?? 1
+    const steps = 20
+    const interval = (duration * 1000) / steps
+    let step = 0
+
+    // Start playing the next track
+    nextHowl.play()
+
+    const fadeTimer = setInterval(() => {
+      step++
+      const progress = step / steps
+
+      // Fade out current
+      if (currentHowl) {
+        currentHowl.volume(currentVolume * (1 - progress))
+      }
+      // Fade in next
+      nextHowl.volume(progress)
+
+      if (step >= steps) {
+        clearInterval(fadeTimer)
+        // Unload old howl
+        if (currentHowl) {
+          currentHowl.unload()
+        }
+        // Promote next to current
+        this.howl = nextHowl
+        this.soundId = this.nextSoundId
+        this.nextHowl = null
+        this.nextSoundId = null
+        this._playing = true
+
+        // Wire up seek and end callbacks
+        if (this._pendingSeekCallback) {
+          this.onSeekUpdate = this._pendingSeekCallback
+          this._pendingSeekCallback = null
+        }
+        if (this._pendingEndCallback) {
+          this.onEndCallback = this._pendingEndCallback
+          this._pendingEndCallback = null
+        }
+        this.startSeekUpdates()
+      }
+    }, interval)
   }
 
   play(): void {
@@ -112,6 +227,12 @@ export class AudioEngine {
     this.howl?.volume(volume)
   }
 
+  setRate(rate: number): void {
+    this._rate = rate
+    this.howl?.rate(rate)
+    if (this.nextHowl) this.nextHowl.rate(rate)
+  }
+
   getSeek(): number {
     return (this.howl?.seek() as number) ?? 0
   }
@@ -130,12 +251,19 @@ export class AudioEngine {
       this.howl.unload()
       this.howl = null
     }
+    if (this.nextHowl) {
+      this.nextHowl.unload()
+      this.nextHowl = null
+    }
     this.soundId = null
+    this.nextSoundId = null
     this._playing = false
     this.onEndCallback = null
     this.onSeekUpdate = null
     this.onLoadCallback = null
     this.onErrorCallback = null
+    this._pendingSeekCallback = null
+    this._pendingEndCallback = null
   }
 
   private startSeekUpdates(): void {

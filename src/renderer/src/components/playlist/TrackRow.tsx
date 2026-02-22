@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { Track, DownloadProgress } from '../../../../shared/models'
 import { formatDuration } from '../../../../shared/utils'
 import { usePlayerStore } from '../../store/playerStore'
@@ -61,7 +62,7 @@ function DownloadStatus({ progress }: { progress: DownloadProgress }): JSX.Eleme
   }
 }
 
-export function TrackRow({ track, index, tracks, selected, onToggleSelect, downloadProgress, onContextMenu }: TrackRowProps): JSX.Element {
+export const TrackRow = memo(function TrackRow({ track, index, tracks, selected, onToggleSelect, downloadProgress, onContextMenu }: TrackRowProps): JSX.Element {
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const setQueue = usePlayerStore((s) => s.setQueue)
   const play = usePlayerStore((s) => s.play)
@@ -134,4 +135,12 @@ export function TrackRow({ track, index, tracks, selected, onToggleSelect, downl
       )}
     </div>
   )
-}
+}, (prev, next) => {
+  return (
+    prev.track.id === next.track.id &&
+    prev.selected === next.selected &&
+    prev.index === next.index &&
+    prev.downloadProgress?.status === next.downloadProgress?.status &&
+    prev.downloadProgress?.percent === next.downloadProgress?.percent
+  )
+})
