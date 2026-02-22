@@ -191,7 +191,7 @@ export class YtdlpService {
     })
   }
 
-  private sanitizeFilename(name: string): string {
+  sanitizeFilename(name: string): string {
     return name.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim()
   }
 }

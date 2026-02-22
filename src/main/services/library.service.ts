@@ -1,6 +1,6 @@
 import { app } from 'electron'
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync } from 'fs'
-import { join } from 'path'
+import { join, dirname } from 'path'
 import type { LibraryData, Playlist, Track } from '../../shared/models'
 
 const LIBRARY_VERSION = 1
@@ -14,7 +14,7 @@ export class LibraryService {
     this.filePath = join(userDataPath, 'library.json')
   }
 
-  load(): LibraryData {
+  private loadRaw(): LibraryData {
     if (!existsSync(this.filePath)) {
       return { playlists: [], version: LIBRARY_VERSION }
     }
@@ -26,12 +26,20 @@ export class LibraryService {
     }
   }
 
+  load(): LibraryData {
+    const data = this.loadRaw()
+    for (const playlist of data.playlists) {
+      this.applyTrackOrder(playlist)
+    }
+    return data
+  }
+
   save(data: LibraryData): void {
     writeFileSync(this.filePath, JSON.stringify(data, null, 2), 'utf-8')
   }
 
   upsertTrack(playlist: Playlist, track: Track): void {
-    const data = this.load()
+    const data = this.loadRaw()
     let existingPlaylist = data.playlists.find((p) => p.id === playlist.id)
 
     if (!existingPlaylist) {
@@ -50,7 +58,7 @@ export class LibraryService {
   }
 
   deleteTracks(trackIds: string[]): void {
-    const data = this.load()
+    const data = this.loadRaw()
     const idsSet = new Set(trackIds)
 
     for (const playlist of data.playlists) {
@@ -82,7 +90,7 @@ export class LibraryService {
    * Returns the cleaned library data.
    */
   verify(): LibraryData {
-    const data = this.load()
+    const data = this.loadRaw()
     let changed = false
 
     for (const playlist of data.playlists) {
@@ -100,11 +108,55 @@ export class LibraryService {
     if (data.playlists.length !== beforePlaylists) changed = true
 
     if (changed) this.save(data)
+    for (const playlist of data.playlists) {
+      this.applyTrackOrder(playlist)
+    }
     return data
   }
 
+  writeTrackOrder(playlistDir: string, playlistId: string): void {
+    const data = this.loadRaw()
+    const pl = data.playlists.find((p) => p.id === playlistId)
+    if (!pl) return
+    const downloaded = pl.tracks
+      .filter((t) => t.filePath)
+      .sort((a, b) => a.position - b.position)
+    const lines = downloaded.map((t, i) => `${i + 1}) ${t.artist} - ${t.title}`)
+    writeFileSync(join(playlistDir, 'track-order.txt'), lines.join('\n'), 'utf-8')
+  }
+
+  private applyTrackOrder(playlist: Playlist): void {
+    if (playlist.tracks.length === 0) return
+    const firstTrack = playlist.tracks.find((t) => t.filePath)
+    if (!firstTrack) return
+    const playlistDir = dirname(firstTrack.filePath!)
+    const orderFile = join(playlistDir, 'track-order.txt')
+    if (!existsSync(orderFile)) return
+
+    const lines = readFileSync(orderFile, 'utf-8')
+      .split('\n')
+      .filter((l) => l.trim())
+    const orderedKeys = lines
+      .map((line) => {
+        const match = line.match(/^\d+\)\s*(.+)$/)
+        return match ? match[1].trim().toLowerCase() : ''
+      })
+      .filter(Boolean)
+
+    const orderMap = new Map<string, number>()
+    orderedKeys.forEach((key, i) => orderMap.set(key, i))
+
+    playlist.tracks.sort((a, b) => {
+      const keyA = `${a.artist} - ${a.title}`.toLowerCase()
+      const keyB = `${b.artist} - ${b.title}`.toLowerCase()
+      const posA = orderMap.get(keyA) ?? 9999
+      const posB = orderMap.get(keyB) ?? 9999
+      return posA - posB
+    })
+  }
+
   deleteAll(): void {
-    const data = this.load()
+    const data = this.loadRaw()
 
     // Delete all audio files
     for (const playlist of data.playlists) {

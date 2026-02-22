@@ -1,5 +1,6 @@
 import { ipcMain, BrowserWindow } from 'electron'
 import { IpcChannels } from '../../shared/ipc-channels'
+import { join } from 'path'
 import { YtdlpService } from '../services/ytdlp.service'
 import { FfmpegService } from '../services/ffmpeg.service'
 import { LibraryService } from '../services/library.service'
@@ -72,6 +73,8 @@ export function registerDownloadIpc(mainWindow: BrowserWindow): void {
               downloadedAt: new Date().toISOString()
             }
             library.upsertTrack(playlist, updatedTrack)
+            const playlistDir = join(outputDir, ytdlp.sanitizeFilename(playlist.title))
+            library.writeTrackOrder(playlistDir, playlist.id)
             mainWindow.webContents.send(IpcChannels.DOWNLOAD_COMPLETE, {
               trackId: track.id,
               filePath
