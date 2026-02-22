@@ -2,6 +2,19 @@
 
 All notable changes to TuneVault will be documented in this file.
 
+## [1.3.0] - 2026-02-22
+
+### Added
+- OIIA OIIA wolf animation (full spin with squash-and-stretch wobble, inspired by the cat meme)
+- Improved playlist UX: sticky header, inline per-track download progress, live download counter, empty state, column labels
+- Download All button now visually selects all checkboxes in the UI
+
+### Fixed
+- Full release date written to audio metadata (ID3v2.4 TDRC/TDRL) instead of year-only
+- Tracks always sorted by original playlist position (removed track-order.txt reordering)
+- Download state and selection reset when fetching a new playlist
+- Same songs allowed in different playlists (separate IDs, files, and library entries)
+
 ## [1.2.0] - 2026-02-22
 
 ### Added
