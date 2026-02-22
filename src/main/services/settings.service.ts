@@ -58,6 +58,10 @@ export class SettingsService {
   static save(partial: Partial<AppSettings>): void {
     const current = this.load()
     const merged = { ...current, ...partial }
+    // Deep-merge sync field to prevent partial updates from wiping other sync properties
+    if (partial.sync) {
+      merged.sync = { ...current.sync, ...partial.sync }
+    }
     const filePath = this.getFilePath()
     const tmpPath = filePath + '.tmp'
     writeFileSync(tmpPath, JSON.stringify(merged, null, 2), 'utf-8')

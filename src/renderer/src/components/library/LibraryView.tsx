@@ -10,9 +10,11 @@ import {
   DocumentTextIcon,
   CheckIcon,
   XMarkIcon,
-  MusicalNoteIcon
+  MusicalNoteIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline'
 import { useSettingsStore } from '../../store/settingsStore'
+import { useSyncStore } from '../../store/syncStore'
 import { useLocation } from 'react-router-dom'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -41,6 +43,9 @@ export function LibraryView(): JSX.Element {
   const sortDirection = useLibraryStore((s) => s.sortDirection)
   const getFilteredTracks = useLibraryStore((s) => s.getFilteredTracks)
   const settings = useSettingsStore((s) => s.settings)
+  const syncing = useSyncStore((s) => s.syncing)
+  const pendingResults = useSyncStore((s) => s.pendingResults)
+  const dismissResult = useSyncStore((s) => s.dismissResult)
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false)
   const [showDeleteSelectedConfirm, setShowDeleteSelectedConfirm] = useState(false)
   const [playlistFilter, setPlaylistFilter] = useState<string>('all')
@@ -124,6 +129,15 @@ export function LibraryView(): JSX.Element {
             <ArrowPathIcon className="w-3.5 h-3.5" />
             Reload
           </button>
+          <button
+            onClick={() => window.api.syncCheckNow()}
+            disabled={syncing}
+            className="px-3 py-1.5 text-xs text-text-secondary hover:text-accent border border-border-default rounded-lg hover:border-accent/40 hover:bg-accent/5 transition-all flex items-center gap-1.5 disabled:opacity-50"
+            title="Check for new tracks in synced playlists"
+          >
+            <ArrowPathIcon className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+            Sync Now
+          </button>
           {settings.musicDir && (
             <button
               onClick={() => openFolder(settings.musicDir)}
@@ -157,14 +171,31 @@ export function LibraryView(): JSX.Element {
 
           {/* View Playlist Info — only when a specific playlist is selected */}
           {playlistFilter !== 'all' && (
-            <button
-              onClick={handleViewPlaylistInfo}
-              className="px-3 py-1.5 text-xs text-text-secondary hover:text-accent border border-border-default rounded-lg hover:border-accent/40 hover:bg-accent/5 transition-all flex items-center gap-1.5"
-              title="View playlist-info.md"
-            >
-              <DocumentTextIcon className="w-3.5 h-3.5" />
-              Playlist Info
-            </button>
+            <>
+              <button
+                onClick={handleViewPlaylistInfo}
+                className="px-3 py-1.5 text-xs text-text-secondary hover:text-accent border border-border-default rounded-lg hover:border-accent/40 hover:bg-accent/5 transition-all flex items-center gap-1.5"
+                title="View playlist-info.md"
+              >
+                <DocumentTextIcon className="w-3.5 h-3.5" />
+                Playlist Info
+              </button>
+              <button
+                onClick={async () => {
+                  await window.api.syncTogglePlaylist(playlistFilter)
+                  await useSettingsStore.getState().load()
+                }}
+                className={`px-3 py-1.5 text-xs border rounded-lg transition-all flex items-center gap-1.5 ${
+                  settings.sync.syncedPlaylistIds.includes(playlistFilter)
+                    ? 'text-accent border-accent/40 bg-accent/10'
+                    : 'text-text-secondary border-border-default hover:text-accent hover:border-accent/40 hover:bg-accent/5'
+                }`}
+                title="Toggle auto-sync for this playlist"
+              >
+                <ArrowPathIcon className="w-3.5 h-3.5" />
+                {settings.sync.syncedPlaylistIds.includes(playlistFilter) ? 'Auto-Sync On' : 'Auto-Sync Off'}
+              </button>
+            </>
           )}
 
           {/* Spacer */}
@@ -205,6 +236,45 @@ export function LibraryView(): JSX.Element {
           )}
         </div>
       </div>
+
+      {/* Pending sync results banners */}
+      {pendingResults.map((result) => (
+        <div
+          key={result.playlistId}
+          className="flex items-center gap-3 px-4 py-3 bg-accent/10 border border-accent/30 rounded-lg"
+        >
+          <ArrowDownTrayIcon className="w-5 h-5 text-accent shrink-0" />
+          <span className="text-sm flex-1">
+            <strong>{result.newTracks.length}</strong> new track{result.newTracks.length !== 1 ? 's' : ''} in{' '}
+            <strong>{result.playlistTitle}</strong>
+          </span>
+          <button
+            onClick={() => {
+              const playlist = library.playlists.find((p) => p.id === result.playlistId)
+              if (playlist) {
+                window.api.startDownload({
+                  playlist: { ...playlist, tracks: result.newTracks },
+                  format: settings.audioFormat,
+                  outputDir: settings.musicDir,
+                  concurrency: settings.concurrency,
+                  dateFormat: settings.dateFormat,
+                  releaseDateSource: settings.releaseDateSource
+                })
+              }
+              dismissResult(result.playlistId)
+            }}
+            className="px-3 py-1 text-xs font-medium text-accent border border-accent/40 rounded-lg hover:bg-accent/20 transition"
+          >
+            Download All
+          </button>
+          <button
+            onClick={() => dismissResult(result.playlistId)}
+            className="px-3 py-1 text-xs text-text-muted hover:text-text-secondary transition"
+          >
+            Dismiss
+          </button>
+        </div>
+      ))}
 
       {tracks.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-text-muted">

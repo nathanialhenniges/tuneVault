@@ -137,6 +137,50 @@ export function SettingsView(): JSX.Element {
         </div>
       </div>
 
+      {/* Auto-Sync */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium">Auto-Sync</label>
+        <div className="flex gap-3 flex-wrap">
+          {(['On', 'Off'] as const).map((opt) => {
+            const isOn = opt === 'On'
+            const active = settings.sync.enabled === isOn
+            return (
+              <button
+                key={opt}
+                onClick={() => update({ sync: { ...settings.sync, enabled: isOn } })}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  active
+                    ? 'bg-accent text-text-inverted'
+                    : 'bg-glass-hover text-text-secondary hover:bg-glass-active'
+                }`}
+              >
+                {opt}
+              </button>
+            )
+          })}
+        </div>
+        {settings.sync.enabled && (
+          <div className="mt-3 space-y-1">
+            <label className="block text-xs text-text-muted">Sync Interval (hours)</label>
+            <div className="flex items-center gap-3">
+              {([1, 3, 6, 12, 24] as const).map((h) => (
+                <button
+                  key={h}
+                  onClick={() => update({ sync: { ...settings.sync, intervalHours: h } })}
+                  className={`w-10 h-10 rounded-lg text-sm font-medium transition ${
+                    settings.sync.intervalHours === h
+                      ? 'bg-accent text-text-inverted'
+                      : 'bg-glass-hover text-text-secondary hover:bg-glass-active'
+                  }`}
+                >
+                  {h}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Wolf Mode — only visible after Konami code unlock */}
       {wolfUnlocked && (
         <div className="space-y-2">

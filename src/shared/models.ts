@@ -63,6 +63,20 @@ export interface LibraryData {
   version: number
 }
 
+export interface SyncConfig {
+  enabled: boolean
+  intervalHours: 1 | 3 | 6 | 12 | 24
+  syncedPlaylistIds: string[]
+  lastSyncTime: string | null
+}
+
+export interface SyncResult {
+  playlistId: string
+  playlistTitle: string
+  newTracks: Track[]
+  checkedAt: string
+}
+
 export interface AppSettings {
   musicDir: string
   audioFormat: AudioFormat
@@ -70,6 +84,7 @@ export interface AppSettings {
   theme: 'dark' | 'light' | 'system'
   dateFormat: DateFormat
   releaseDateSource: ReleaseDateSource
+  sync: SyncConfig
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -78,7 +93,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   concurrency: 2,
   theme: 'dark',
   dateFormat: 'MM/DD/YYYY',
-  releaseDateSource: 'youtube'
+  releaseDateSource: 'youtube',
+  sync: { enabled: false, intervalHours: 6, syncedPlaylistIds: [], lastSyncTime: null }
 }
 
 export interface MetadataEntry {

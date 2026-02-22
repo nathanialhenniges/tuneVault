@@ -16,10 +16,15 @@ import { DisclaimerModal } from './components/ui/DisclaimerModal'
 import { KeyboardShortcutsModal } from './components/ui/KeyboardShortcutsModal'
 import { ToastContainer } from './components/ui/ToastContainer'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
+import { Visualizer } from './components/player/Visualizer'
+import { useVisualizerStore } from './store/visualizerStore'
+import { useSyncStore } from './store/syncStore'
 
 export default function App(): JSX.Element {
   const loadSettings = useSettingsStore((s) => s.load)
   const loadLibrary = useLibraryStore((s) => s.load)
+  const visualizerEnabled = useVisualizerStore((s) => s.enabled)
+  const visualizerStyle = useVisualizerStore((s) => s.style)
   const setProgress = useDownloadStore((s) => s.setProgress)
   const setComplete = useDownloadStore((s) => s.setComplete)
   const setError = useDownloadStore((s) => s.setError)
@@ -45,6 +50,13 @@ export default function App(): JSX.Element {
       setError(data.trackId, data.error)
     })
 
+    const unsubSyncResult = window.api.onSyncResult((result) => {
+      useSyncStore.getState().addResult(result)
+    })
+    const unsubSyncStatus = window.api.onSyncStatus((status) => {
+      useSyncStore.getState().setSyncing(status.syncing)
+    })
+
     const unsubToggle = window.api.onTrayTogglePlay(() => {
       usePlayerStore.getState().togglePlay()
     })
@@ -59,6 +71,8 @@ export default function App(): JSX.Element {
       unsubProgress()
       unsubComplete()
       unsubError()
+      unsubSyncResult()
+      unsubSyncStatus()
       unsubToggle()
       unsubNext()
       unsubPrev()
@@ -106,6 +120,7 @@ export default function App(): JSX.Element {
             <AnimatedRoutes />
           </ErrorBoundary>
         </MainLayout>
+        <Visualizer enabled={visualizerEnabled} style={visualizerStyle} />
         <PlayerBar />
         <DisclaimerModal />
         <KeyboardShortcutsModal />

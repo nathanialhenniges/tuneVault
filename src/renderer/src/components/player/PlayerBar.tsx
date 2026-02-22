@@ -12,8 +12,11 @@ import {
   BackwardIcon,
   ArrowPathIcon,
   ArrowsRightLeftIcon,
-  QueueListIcon
+  QueueListIcon,
+  SignalIcon
 } from '@heroicons/react/24/solid'
+import { useVisualizerStore } from '../../store/visualizerStore'
+import type { VisualizerStyle } from '../../store/visualizerStore'
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -54,9 +57,19 @@ export function PlayerBar(): JSX.Element {
   const crossfadeDuration = usePlayerStore((s) => s.crossfadeDuration)
   const setCrossfadeDuration = usePlayerStore((s) => s.setCrossfadeDuration)
   const [showCrossfadeMenu, setShowCrossfadeMenu] = useState(false)
+  const [showVisualizerMenu, setShowVisualizerMenu] = useState(false)
+
+  const visualizerEnabled = useVisualizerStore((s) => s.enabled)
+  const toggleVisualizer = useVisualizerStore((s) => s.toggle)
+  const setVisualizerStyle = useVisualizerStore((s) => s.setStyle)
 
   const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2]
   const CROSSFADE_OPTIONS = [0, 2, 4, 6]
+  const VISUALIZER_STYLES: { value: VisualizerStyle; label: string }[] = [
+    { value: 'bars', label: 'Bars' },
+    { value: 'waveform', label: 'Waveform' },
+    { value: 'circular', label: 'Circular' }
+  ]
 
   const cycleSpeed = (): void => {
     const idx = SPEED_OPTIONS.indexOf(playbackRate)
@@ -188,6 +201,36 @@ export function PlayerBar(): JSX.Element {
           )}
         </div>
         <VolumeControl />
+        <div className="relative">
+          <button
+            onClick={toggleVisualizer}
+            onContextMenu={(e) => { e.preventDefault(); setShowVisualizerMenu(!showVisualizerMenu) }}
+            className={`transition ${visualizerEnabled ? 'text-accent' : 'text-text-muted hover:text-text-secondary'}`}
+            title="Visualizer (right-click for style)"
+            aria-label="Visualizer"
+            aria-pressed={visualizerEnabled}
+          >
+            <SignalIcon className="w-4 h-4" />
+          </button>
+          {showVisualizerMenu && (
+            <div className="absolute bottom-full right-0 mb-1 glass-float glass-border-float py-1 min-w-[6rem]" style={{ borderRadius: 'var(--radius-card)' }}>
+              {VISUALIZER_STYLES.map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => {
+                    setVisualizerStyle(value)
+                    setShowVisualizerMenu(false)
+                  }}
+                  className={`w-full px-3 py-1 text-xs text-left hover:bg-glass-hover transition ${
+                    useVisualizerStore.getState().style === value ? 'text-accent' : 'text-text-secondary'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           onClick={() => setShowQueue(!showQueue)}
           className="text-text-secondary hover:text-text-primary transition"

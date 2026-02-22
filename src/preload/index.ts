@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IpcChannels } from '../shared/ipc-channels'
-import type { AppSettings, DownloadRequest, DownloadProgress, LibraryData, Playlist } from '../shared/models'
+import type { AppSettings, DownloadRequest, DownloadProgress, LibraryData, Playlist, SyncConfig, SyncResult } from '../shared/models'
 
 const appVersion: string = (() => {
   try {
@@ -69,6 +69,24 @@ const api = {
     ipcRenderer.invoke(IpcChannels.SETTINGS_SET, settings),
   selectDirectory: (): Promise<string | null> =>
     ipcRenderer.invoke(IpcChannels.SETTINGS_SELECT_DIRECTORY),
+
+  // Sync
+  syncCheckNow: (): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.SYNC_CHECK_NOW),
+  syncTogglePlaylist: (playlistId: string): Promise<SyncConfig> =>
+    ipcRenderer.invoke(IpcChannels.SYNC_TOGGLE_PLAYLIST, playlistId),
+  syncDismissTracks: (playlistId: string): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.SYNC_DISMISS_TRACKS, playlistId),
+  onSyncResult: (callback: (result: SyncResult) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, result: SyncResult): void => callback(result)
+    ipcRenderer.on(IpcChannels.SYNC_RESULT, handler)
+    return () => ipcRenderer.removeListener(IpcChannels.SYNC_RESULT, handler)
+  },
+  onSyncStatus: (callback: (status: { syncing: boolean }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: { syncing: boolean }): void => callback(status)
+    ipcRenderer.on(IpcChannels.SYNC_STATUS, handler)
+    return () => ipcRenderer.removeListener(IpcChannels.SYNC_STATUS, handler)
+  },
 
   // Tray / media key events
   onTrayTogglePlay: (callback: () => void) => {

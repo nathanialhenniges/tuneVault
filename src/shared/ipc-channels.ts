@@ -26,5 +26,12 @@ export const IpcChannels = {
   // Settings
   SETTINGS_GET: 'settings:get',
   SETTINGS_SET: 'settings:set',
-  SETTINGS_SELECT_DIRECTORY: 'settings:select-directory'
+  SETTINGS_SELECT_DIRECTORY: 'settings:select-directory',
+
+  // Sync
+  SYNC_CHECK_NOW: 'sync:check-now',
+  SYNC_RESULT: 'sync:result',
+  SYNC_STATUS: 'sync:status',
+  SYNC_TOGGLE_PLAYLIST: 'sync:toggle-playlist',
+  SYNC_DISMISS_TRACKS: 'sync:dismiss-tracks'
 } as const
