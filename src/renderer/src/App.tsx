@@ -19,6 +19,7 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { Visualizer } from './components/player/Visualizer'
 import { useVisualizerStore } from './store/visualizerStore'
 import { useSyncStore } from './store/syncStore'
+import { toast } from './store/toastStore'
 
 export default function App(): JSX.Element {
   const loadSettings = useSettingsStore((s) => s.load)
@@ -55,6 +56,13 @@ export default function App(): JSX.Element {
     })
     const unsubSyncStatus = window.api.onSyncStatus((status) => {
       useSyncStore.getState().setSyncing(status.syncing)
+      if (status.message) {
+        if (status.syncing) {
+          toast.info(status.message)
+        } else {
+          toast.success(status.message)
+        }
+      }
     })
 
     const unsubToggle = window.api.onTrayTogglePlay(() => {

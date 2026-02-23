@@ -36,38 +36,55 @@ export class SyncService {
     if (this.checking) return
     this.checking = true
 
+    let totalNewTracks = 0
+    let playlistsChecked = 0
+
     try {
-      this.sendStatus(true)
+      this.sendStatus(true, 'Checking for new tracks…')
 
       const settings = SettingsService.load()
       const syncedIds = settings.sync.syncedPlaylistIds
-      if (syncedIds.length === 0) return
+      if (syncedIds.length === 0) {
+        this.sendStatus(false, 'No playlists configured for sync')
+        return
+      }
 
       const library = LibraryService.load()
       const libraryPlaylistIds = new Set(library.playlists.map((p) => p.id))
 
       for (const playlistId of syncedIds) {
         if (!libraryPlaylistIds.has(playlistId)) continue
-        await this.checkOne(playlistId, library)
+        const newCount = await this.checkOne(playlistId, library)
+        totalNewTracks += newCount
+        playlistsChecked++
       }
 
       SettingsService.save({ sync: { ...settings.sync, lastSyncTime: new Date().toISOString() } })
     } catch (err) {
       console.error('Sync checkAll error:', err)
+      this.sendStatus(false, 'Sync failed — check logs')
+      return
     } finally {
       this.checking = false
-      this.sendStatus(false)
+    }
+
+    if (totalNewTracks > 0) {
+      this.sendStatus(false, `Found ${totalNewTracks} new track${totalNewTracks !== 1 ? 's' : ''}`)
+    } else if (playlistsChecked > 0) {
+      this.sendStatus(false, `All ${playlistsChecked} playlist${playlistsChecked !== 1 ? 's' : ''} up to date`)
+    } else {
+      this.sendStatus(false, 'No synced playlists found in library')
     }
   }
 
   async checkOne(
     playlistId: string,
     library?: ReturnType<typeof LibraryService.load>
-  ): Promise<void> {
+  ): Promise<number> {
     try {
       const lib = library ?? LibraryService.load()
       const existingPlaylist = lib.playlists.find((p) => p.id === playlistId)
-      if (!existingPlaylist) return
+      if (!existingPlaylist) return 0
 
       const url = `https://www.youtube.com/playlist?list=${playlistId}`
       const fetched = await this.youtube.fetchPlaylist(url)
@@ -84,13 +101,16 @@ export class SyncService {
         }
         this.mainWindow?.webContents.send(IpcChannels.SYNC_RESULT, result)
       }
+
+      return newTracks.length
     } catch (err) {
       console.error(`Sync error for playlist ${playlistId}:`, err)
+      return 0
     }
   }
 
-  private sendStatus(syncing: boolean): void {
-    this.mainWindow?.webContents.send(IpcChannels.SYNC_STATUS, { syncing })
+  private sendStatus(syncing: boolean, message?: string): void {
+    this.mainWindow?.webContents.send(IpcChannels.SYNC_STATUS, { syncing, message })
   }
 }
 

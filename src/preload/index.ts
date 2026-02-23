@@ -82,8 +82,8 @@ const api = {
     ipcRenderer.on(IpcChannels.SYNC_RESULT, handler)
     return () => ipcRenderer.removeListener(IpcChannels.SYNC_RESULT, handler)
   },
-  onSyncStatus: (callback: (status: { syncing: boolean }) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, status: { syncing: boolean }): void => callback(status)
+  onSyncStatus: (callback: (status: { syncing: boolean; message?: string }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: { syncing: boolean; message?: string }): void => callback(status)
     ipcRenderer.on(IpcChannels.SYNC_STATUS, handler)
     return () => ipcRenderer.removeListener(IpcChannels.SYNC_STATUS, handler)
   },
