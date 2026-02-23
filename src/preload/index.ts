@@ -57,6 +57,8 @@ const api = {
     ipcRenderer.invoke(IpcChannels.LIBRARY_GET_PLAYLIST_INFO_PATH, playlistId),
   readPlaylistInfo: (playlistId: string): Promise<string | null> =>
     ipcRenderer.invoke(IpcChannels.LIBRARY_READ_PLAYLIST_INFO, playlistId),
+  openFile: (filePath: string): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.LIBRARY_OPEN_FILE, filePath),
 
   // Player
   getFileUrl: (filePath: string): Promise<string> =>

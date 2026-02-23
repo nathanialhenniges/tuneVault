@@ -54,6 +54,11 @@ export function registerLibraryIpc(): void {
     return readFileSync(infoFile, 'utf-8')
   })
 
+  ipcMain.handle(IpcChannels.LIBRARY_OPEN_FILE, async (_event, filePath: string) => {
+    if (!existsSync(filePath)) throw new Error('File not found')
+    shell.openPath(filePath)
+  })
+
   ipcMain.handle(IpcChannels.LIBRARY_OPEN_FOLDER, async (_event, filePath: string) => {
     try {
       const stat = statSync(filePath)

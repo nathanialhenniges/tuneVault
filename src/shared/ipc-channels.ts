@@ -19,6 +19,7 @@ export const IpcChannels = {
   LIBRARY_GET_PLAYLIST_INFO_PATH: 'library:get-playlist-info-path',
   LIBRARY_READ_PLAYLIST_INFO: 'library:read-playlist-info',
   LIBRARY_VERIFY: 'library:verify',
+  LIBRARY_OPEN_FILE: 'library:open-file',
 
   // Player
   PLAYER_GET_FILE_URL: 'player:get-file-url',
