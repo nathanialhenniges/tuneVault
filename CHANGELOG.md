@@ -2,6 +2,24 @@
 
 All notable changes to TuneVault will be documented in this file.
 
+## [2.4.0] - 2026-02-23
+
+### Added
+- Shared `Modal` component — all modals now use a single reusable component with portal rendering, focus trap, Escape/backdrop-click dismiss, and consistent `z-[100]` layering
+- Redesigned Playlist Info modal with native styled view: playlist thumbnail, channel, track count, total duration, and per-track rows with thumbnails, position, duration, and bitrate
+- Pretty/Markdown view toggle in Playlist Info modal header — switch between the styled track list and raw `playlist-info.md` content
+- "Open in Editor" button to open `playlist-info.md` in the system default editor
+- New `openFile` IPC channel (`shell.openPath`) for opening files with default apps
+
+### Fixed
+- Redownload confirmation modal now has focus trap, Escape, and backdrop-click dismiss (was missing all three)
+- All modals use consistent `z-[100]` (some were `z-50`, causing layering issues behind other UI)
+
+### Removed
+- `react-markdown` and `remark-gfm` dependencies (replaced by native React views)
+- `MarkdownViewer` component
+- Local `FocusTrapModal` from LibraryView (replaced by shared `Modal`)
+
 ## [2.3.0] - 2026-02-22
 
 ### Performance
