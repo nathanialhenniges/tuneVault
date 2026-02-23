@@ -3,6 +3,7 @@ import { useDownloadStore } from '../../store/downloadStore'
 import { usePlaylistStore } from '../../store/playlistStore'
 import { useDownload } from '../../hooks/useDownload'
 import { DownloadItem } from './DownloadItem'
+import { Modal } from '../ui/Modal'
 import { ArrowPathIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 
 export function DownloadQueue(): JSX.Element {
@@ -98,30 +99,26 @@ export function DownloadQueue(): JSX.Element {
         </div>
       )}
 
-      {showRedownloadConfirm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}>
-          <div className="glass-modal p-6 max-w-md mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
-            <h3 className="text-lg font-semibold mb-2">Redownload All Tracks?</h3>
-            <p className="text-sm text-text-secondary mb-6">
-              This will re-download all {playlist?.tracks.length ?? 0} tracks and overwrite the existing files on disk.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowRedownloadConfirm(false)}
-                className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary border border-border-default rounded-lg hover:border-accent/50 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRedownload}
-                className="px-4 py-2 text-sm text-text-inverted bg-accent hover:bg-accent-hover rounded-lg transition"
-              >
-                Redownload All
-              </button>
-            </div>
-          </div>
+      <Modal open={showRedownloadConfirm} onClose={() => setShowRedownloadConfirm(false)} className="p-6 max-w-md mx-4">
+        <h3 className="text-lg font-semibold mb-2">Redownload All Tracks?</h3>
+        <p className="text-sm text-text-secondary mb-6">
+          This will re-download all {playlist?.tracks.length ?? 0} tracks and overwrite the existing files on disk.
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => setShowRedownloadConfirm(false)}
+            className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary border border-border-default rounded-lg hover:border-accent/50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleRedownload}
+            className="px-4 py-2 text-sm text-text-inverted bg-accent hover:bg-accent-hover rounded-lg transition"
+          >
+            Redownload All
+          </button>
         </div>
-      )}
+      </Modal>
     </div>
   )
 }

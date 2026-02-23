@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useLibraryStore } from '../../store/libraryStore'
 import { useShallow } from 'zustand/react/shallow'
 import { SearchBar } from './SearchBar'
@@ -17,24 +17,8 @@ import {
 import { useSettingsStore } from '../../store/settingsStore'
 import { useSyncStore } from '../../store/syncStore'
 import { useLocation } from 'react-router-dom'
-import { MarkdownViewer } from './MarkdownViewer'
-import { useFocusTrap } from '../../hooks/useFocusTrap'
-
-function FocusTrapModal({ children, onClose }: { children: React.ReactNode; onClose: () => void }): JSX.Element {
-  const ref = useRef<HTMLDivElement>(null)
-  useFocusTrap(ref, onClose)
-  return (
-    <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-      style={{ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div ref={ref}>
-        {children}
-      </div>
-    </div>
-  )
-}
+import { Modal } from '../ui/Modal'
+import { PlaylistInfoModal } from './PlaylistInfoModal'
 
 export function LibraryView(): JSX.Element {
   const { load, selectAllTracks, clearSelection, deleteTracks, deleteAll, openFolder } = useLibraryStore(useShallow((s) => ({
@@ -58,9 +42,8 @@ export function LibraryView(): JSX.Element {
   const dismissResult = useSyncStore((s) => s.dismissResult)
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false)
   const [showDeleteSelectedConfirm, setShowDeleteSelectedConfirm] = useState(false)
+  const [showPlaylistInfo, setShowPlaylistInfo] = useState(false)
   const [playlistFilter, setPlaylistFilter] = useState<string>('all')
-  const [playlistInfoContent, setPlaylistInfoContent] = useState<string | null>(null)
-  const [playlistInfoPath, setPlaylistInfoPath] = useState<string | null>(null)
   const location = useLocation()
 
   useEffect(() => {
@@ -97,22 +80,6 @@ export function LibraryView(): JSX.Element {
       await deleteAll()
     }
     setShowDeleteAllConfirm(false)
-  }
-
-  const handleViewPlaylistInfo = async (): Promise<void> => {
-    if (playlistFilter === 'all') return
-    const [content, path] = await Promise.all([
-      window.api.readPlaylistInfo(playlistFilter),
-      window.api.getPlaylistInfoPath(playlistFilter)
-    ])
-    if (content) {
-      setPlaylistInfoContent(content)
-      setPlaylistInfoPath(path)
-    }
-  }
-
-  const handleOpenPlaylistInfoFolder = async (): Promise<void> => {
-    if (playlistInfoPath) await window.api.openFolder(playlistInfoPath)
   }
 
   return (
@@ -183,9 +150,9 @@ export function LibraryView(): JSX.Element {
           {playlistFilter !== 'all' && (
             <>
               <button
-                onClick={handleViewPlaylistInfo}
+                onClick={() => setShowPlaylistInfo(true)}
                 className="px-3 py-1.5 text-xs text-text-secondary hover:text-accent border border-border-default rounded-lg hover:border-accent/40 hover:bg-accent/5 transition-all flex items-center gap-1.5"
-                title="View playlist-info.md"
+                title="View playlist info"
               >
                 <DocumentTextIcon className="w-3.5 h-3.5" />
                 Playlist Info
@@ -300,96 +267,60 @@ export function LibraryView(): JSX.Element {
       )}
 
       {/* Delete All Confirmation Modal */}
-      {showDeleteAllConfirm && (
-        <FocusTrapModal onClose={() => setShowDeleteAllConfirm(false)}>
-          <div className="glass-modal p-6 max-w-md mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
-            <h3 className="text-lg font-semibold mb-2">
-              {playlistFilter !== 'all' ? `Delete ${tracks.length} Playlist Tracks?` : 'Delete Entire Library?'}
-            </h3>
-            <p className="text-sm text-text-secondary mb-6">
-              {playlistFilter !== 'all'
-                ? `This will permanently delete all ${tracks.length} tracks from this playlist and their audio files from disk. This action cannot be undone.`
-                : `This will permanently delete all ${tracks.length} tracks and their audio files from disk. This action cannot be undone.`}
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteAllConfirm(false)}
-                className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary border border-border-default rounded-lg hover:border-accent/50 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteAll}
-                className="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
-              >
-                {playlistFilter !== 'all' ? 'Delete Playlist Tracks' : 'Delete Everything'}
-              </button>
-            </div>
-          </div>
-        </FocusTrapModal>
-      )}
+      <Modal open={showDeleteAllConfirm} onClose={() => setShowDeleteAllConfirm(false)} className="p-6 max-w-md mx-4">
+        <h3 className="text-lg font-semibold mb-2">
+          {playlistFilter !== 'all' ? `Delete ${tracks.length} Playlist Tracks?` : 'Delete Entire Library?'}
+        </h3>
+        <p className="text-sm text-text-secondary mb-6">
+          {playlistFilter !== 'all'
+            ? `This will permanently delete all ${tracks.length} tracks from this playlist and their audio files from disk. This action cannot be undone.`
+            : `This will permanently delete all ${tracks.length} tracks and their audio files from disk. This action cannot be undone.`}
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => setShowDeleteAllConfirm(false)}
+            className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary border border-border-default rounded-lg hover:border-accent/50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleDeleteAll}
+            className="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
+          >
+            {playlistFilter !== 'all' ? 'Delete Playlist Tracks' : 'Delete Everything'}
+          </button>
+        </div>
+      </Modal>
 
-      {/* Playlist Info Viewer Modal */}
-      {playlistInfoContent && (
-        <FocusTrapModal onClose={() => { setPlaylistInfoContent(null); setPlaylistInfoPath(null) }}>
-          <div className="glass-modal p-6 max-w-3xl w-full mx-4 max-h-[85vh] flex flex-col glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
-            <div className="flex items-center justify-between mb-4 shrink-0">
-              <div className="flex items-center gap-2">
-                <DocumentTextIcon className="w-5 h-5 text-accent" />
-                <h3 className="text-lg font-semibold">Playlist Info</h3>
-              </div>
-              <button
-                onClick={() => { setPlaylistInfoContent(null); setPlaylistInfoPath(null) }}
-                className="p-1.5 text-text-muted hover:text-text-primary transition rounded-lg hover:bg-glass-hover"
-              >
-                <XMarkIcon className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto min-h-0 bg-glass-hover border border-[var(--glass-border-edge)] rounded-lg p-5">
-              <div className="markdown-prose">
-                <MarkdownViewer>{playlistInfoContent}</MarkdownViewer>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 mt-4 shrink-0">
-              <button
-                onClick={handleOpenPlaylistInfoFolder}
-                className="px-3 py-1.5 text-xs text-text-secondary hover:text-accent border border-border-default rounded-lg hover:border-accent/40 hover:bg-accent/5 transition-all flex items-center gap-1.5"
-              >
-                <FolderOpenIcon className="w-3.5 h-3.5" />
-                Open Folder
-              </button>
-            </div>
-          </div>
-        </FocusTrapModal>
+      {/* Playlist Info Modal */}
+      {showPlaylistInfo && playlistFilter !== 'all' && (
+        <PlaylistInfoModal
+          playlistId={playlistFilter}
+          onClose={() => setShowPlaylistInfo(false)}
+        />
       )}
 
       {/* Delete Selected Confirmation Modal */}
-      {showDeleteSelectedConfirm && (
-        <FocusTrapModal onClose={() => setShowDeleteSelectedConfirm(false)}>
-          <div className="glass-modal p-6 max-w-md mx-4 glass-reveal" style={{ borderRadius: 'var(--radius-panel)' }}>
-            <h3 className="text-lg font-semibold mb-2">Delete {selectedTrackIds.size} tracks?</h3>
-            <p className="text-sm text-text-secondary mb-6">
-              This will permanently delete the selected tracks and their audio files from disk. This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteSelectedConfirm(false)}
-                className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary border border-border-default rounded-lg hover:border-accent/50 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteSelected}
-                className="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
-              >
-                Delete Selected
-              </button>
-            </div>
-          </div>
-        </FocusTrapModal>
-      )}
+      <Modal open={showDeleteSelectedConfirm} onClose={() => setShowDeleteSelectedConfirm(false)} className="p-6 max-w-md mx-4">
+        <h3 className="text-lg font-semibold mb-2">Delete {selectedTrackIds.size} tracks?</h3>
+        <p className="text-sm text-text-secondary mb-6">
+          This will permanently delete the selected tracks and their audio files from disk. This action cannot be undone.
+        </p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={() => setShowDeleteSelectedConfirm(false)}
+            className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary border border-border-default rounded-lg hover:border-accent/50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleDeleteSelected}
+            className="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition"
+          >
+            Delete Selected
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }
