@@ -2,6 +2,13 @@
 
 All notable changes to TuneVault will be documented in this file.
 
+## [2.5.0] - 2026-02-25
+
+### Added
+- In-app auto-update checker via `electron-updater` — check for new versions, download, and install from Settings without leaving the app
+- "Updates" section in Settings showing current version with Check / Download / Restart controls
+- User-initiated updates only (`autoDownload: false`) — no surprise downloads
+
 ## [2.4.1] - 2026-02-25
 
 ### Fixed
