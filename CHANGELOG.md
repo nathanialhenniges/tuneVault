@@ -2,6 +2,18 @@
 
 All notable changes to TuneVault will be documented in this file.
 
+## [2.4.1] - 2026-02-25
+
+### Fixed
+- Replace hardcoded `calc(100vh - Npx)` heights with flex layout in Library and Playlist virtual scroll containers — lists now adapt to any window size without overflow or gaps
+- Reset scroll position to top when navigating between routes (Playlists, Downloads, Library, Settings)
+- Reset scroll position when switching between playlists
+- QueueView panel clipping — switched from fixed `max-h-80` inner scroll to flex layout so scrollbar is no longer cut off
+- Virtual scroll `estimateSize` mismatches causing jitter (Library: 45→50, Playlist: 48→52)
+- Playlist filter not resetting to "All" when navigating to Library without a filter
+- `DownloadQueue` `useMemo` invalidating every render due to `Array.from()` creating a new array reference on each pass
+- Sidebar "Downloaded" playlists section now scrolls when it overflows on small windows
+
 ## [2.4.0] - 2026-02-23
 
 ### Added
