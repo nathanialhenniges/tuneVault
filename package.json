@@ -27,6 +27,7 @@
     "@fontsource-variable/dm-sans": "^5.2.8",
     "@heroicons/react": "^2.2.0",
     "@tanstack/react-virtual": "^3.13.18",
+    "electron-updater": "^6.8.3",
     "howler": "^2.2.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react'
 import { useSettingsStore } from '../../store/settingsStore'
 import { useWolfModeStore } from '../../hooks/useWolfMode'
-import type { AudioFormat, DateFormat, ReleaseDateSource } from '../../../../shared/models'
+import type { AudioFormat, DateFormat, ReleaseDateSource, UpdateStatus } from '../../../../shared/models'
 import wolfIcon from '../../assets/wolf-icon.png'
 
 export function SettingsView(): JSX.Element {
@@ -8,6 +9,11 @@ export function SettingsView(): JSX.Element {
   const wolfUnlocked = useWolfModeStore((s) => s.unlocked)
   const wolfEnabled = useWolfModeStore((s) => s.enabled)
   const toggleWolf = useWolfModeStore((s) => s.toggle)
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null)
+
+  useEffect(() => {
+    return window.api.onUpdateStatus(setUpdateStatus)
+  }, [])
 
   return (
     <div className="space-y-8">
@@ -178,6 +184,60 @@ export function SettingsView(): JSX.Element {
               ))}
             </div>
           </div>
+        )}
+      </div>
+
+      {/* Updates */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium">Updates</label>
+        <p className="text-xs text-text-muted">Current version: v{window.api.getVersion()}</p>
+        <div className="flex items-center gap-3 flex-wrap">
+          {(!updateStatus || updateStatus.status === 'not-available' || updateStatus.status === 'error') && (
+            <button
+              onClick={() => window.api.checkForUpdates()}
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-glass-hover text-text-secondary hover:bg-glass-active transition"
+            >
+              Check for Updates
+            </button>
+          )}
+          {updateStatus?.status === 'checking' && (
+            <span className="text-sm text-text-muted">Checking for updates...</span>
+          )}
+          {updateStatus?.status === 'available' && (
+            <>
+              <span className="text-sm text-text-primary">
+                Version {updateStatus.version} available
+              </span>
+              <button
+                onClick={() => window.api.downloadUpdate()}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-accent text-text-inverted transition"
+              >
+                Download Update
+              </button>
+            </>
+          )}
+          {updateStatus?.status === 'downloading' && (
+            <span className="text-sm text-text-muted">
+              Downloading... {updateStatus.progress ?? 0}%
+            </span>
+          )}
+          {updateStatus?.status === 'downloaded' && (
+            <>
+              <span className="text-sm text-text-primary">Update ready to install</span>
+              <button
+                onClick={() => window.api.installUpdate()}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-accent text-text-inverted transition"
+              >
+                Restart Now
+              </button>
+            </>
+          )}
+        </div>
+        {updateStatus?.status === 'not-available' && (
+          <p className="text-xs text-text-muted">You&apos;re up to date.</p>
+        )}
+        {updateStatus?.status === 'error' && (
+          <p className="text-xs text-red-400">{updateStatus.error}</p>
         )}
       </div>
 

@@ -6,6 +6,7 @@ import { registerLibraryIpc } from './library.ipc'
 import { registerPlayerIpc } from './player.ipc'
 import { registerSettingsIpc } from './settings.ipc'
 import { registerSyncIpc } from './sync.ipc'
+import { registerUpdateIpc } from './update.ipc'
 
 export function registerAllIpc(mainWindow: BrowserWindow): void {
   registerPlaylistIpc()
@@ -14,4 +15,5 @@ export function registerAllIpc(mainWindow: BrowserWindow): void {
   registerPlayerIpc()
   registerSettingsIpc()
   registerSyncIpc(mainWindow)
+  registerUpdateIpc(mainWindow)
 }

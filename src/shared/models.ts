@@ -97,6 +97,14 @@ export const DEFAULT_SETTINGS: AppSettings = {
   sync: { enabled: false, intervalHours: 6, syncedPlaylistIds: [], lastSyncTime: null }
 }
 
+export interface UpdateStatus {
+  status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
+  version?: string
+  releaseNotes?: string
+  error?: string
+  progress?: number
+}
+
 export interface MetadataEntry {
   position: number
   title: string

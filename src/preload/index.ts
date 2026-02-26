@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IpcChannels } from '../shared/ipc-channels'
-import type { AppSettings, DownloadRequest, DownloadProgress, LibraryData, Playlist, SyncConfig, SyncResult } from '../shared/models'
+import type { AppSettings, DownloadRequest, DownloadProgress, LibraryData, Playlist, SyncConfig, SyncResult, UpdateStatus } from '../shared/models'
 
 const appVersion: string = (() => {
   try {
@@ -88,6 +88,20 @@ const api = {
     const handler = (_event: Electron.IpcRendererEvent, status: { syncing: boolean; message?: string }): void => callback(status)
     ipcRenderer.on(IpcChannels.SYNC_STATUS, handler)
     return () => ipcRenderer.removeListener(IpcChannels.SYNC_STATUS, handler)
+  },
+
+  // Update
+  checkForUpdates: (): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.UPDATE_CHECK),
+  downloadUpdate: (): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.UPDATE_DOWNLOAD),
+  installUpdate: (): Promise<void> =>
+    ipcRenderer.invoke(IpcChannels.UPDATE_INSTALL),
+  onUpdateStatus: (callback: (status: UpdateStatus) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: UpdateStatus): void =>
+      callback(status)
+    ipcRenderer.on(IpcChannels.UPDATE_STATUS, handler)
+    return () => ipcRenderer.removeListener(IpcChannels.UPDATE_STATUS, handler)
   },
 
   // Tray / media key events

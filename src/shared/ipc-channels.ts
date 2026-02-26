@@ -34,5 +34,11 @@ export const IpcChannels = {
   SYNC_RESULT: 'sync:result',
   SYNC_STATUS: 'sync:status',
   SYNC_TOGGLE_PLAYLIST: 'sync:toggle-playlist',
-  SYNC_DISMISS_TRACKS: 'sync:dismiss-tracks'
+  SYNC_DISMISS_TRACKS: 'sync:dismiss-tracks',
+
+  // Update
+  UPDATE_CHECK: 'update:check',
+  UPDATE_STATUS: 'update:status',
+  UPDATE_DOWNLOAD: 'update:download',
+  UPDATE_INSTALL: 'update:install'
 } as const
