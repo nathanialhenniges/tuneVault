@@ -43,15 +43,14 @@ function VirtualizedTrackList({
   const rowVirtualizer = useVirtualizer({
     count: tracks.length,
     getScrollElement: () => trackListRef.current,
-    estimateSize: () => 48,
+    estimateSize: () => 52,
     overscan: 5
   })
 
   return (
     <div
       ref={trackListRef}
-      className="overflow-y-auto"
-      style={{ height: 'calc(100vh - 380px)' }}
+      className="flex-1 min-h-0 overflow-y-auto"
     >
       <div
         style={{
@@ -102,10 +101,11 @@ export function PlaylistView(): JSX.Element {
   const [detailTrack, setDetailTrack] = useState<Track | null>(null)
   const trackListRef = useRef<HTMLDivElement>(null)
 
-  // Reset state when a new playlist is fetched
+  // Reset state and scroll when a new playlist is fetched
   useEffect(() => {
     setSelected(new Set())
     clearDownloads()
+    trackListRef.current?.scrollTo(0, 0)
   }, [currentPlaylist])
 
   const allIds = useMemo(
@@ -182,7 +182,7 @@ export function PlaylistView(): JSX.Element {
   }, [])
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col flex-1 min-h-0 space-y-6">
       <div>
         <h2 className="text-xl font-semibold mb-4 font-display">Fetch Playlist</h2>
         <PlaylistInput />
@@ -231,7 +231,7 @@ export function PlaylistView(): JSX.Element {
       )}
 
       {currentPlaylist && (
-        <div className="space-y-4">
+        <div className="flex flex-col flex-1 min-h-0 space-y-4">
           {/* Playlist header — sticky */}
           <div className="sticky top-0 z-10 pb-2" style={{ background: 'var(--glass-sidebar-bg)', backdropFilter: 'blur(var(--glass-blur-chrome))', WebkitBackdropFilter: 'blur(var(--glass-blur-chrome))' }}>
             <div className="flex items-center gap-4">

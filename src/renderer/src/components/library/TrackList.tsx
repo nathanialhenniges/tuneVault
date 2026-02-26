@@ -180,7 +180,7 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
   const rowVirtualizer = useVirtualizer({
     count: tracks.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 45,
+    estimateSize: () => 50,
     overscan: 5
   })
 
@@ -212,7 +212,7 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
   }, [openFolder])
 
   return (
-    <div className="space-y-0.5">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Header */}
       <div className="flex items-center gap-4 px-4 py-2 text-xs text-text-muted uppercase tracking-wider border-b border-border-default">
         <span className="w-6"></span>
@@ -227,8 +227,7 @@ export function TrackList({ tracks }: TrackListProps): JSX.Element {
       {/* Virtualized list */}
       <div
         ref={parentRef}
-        className="overflow-y-auto"
-        style={{ height: 'calc(100vh - 280px)' }}
+        className="flex-1 min-h-0 overflow-y-auto"
       >
         <div
           style={{

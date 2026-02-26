@@ -15,19 +15,18 @@ export function DownloadQueue(): JSX.Element {
   const { startDownload } = useDownload()
   const [showRedownloadConfirm, setShowRedownloadConfirm] = useState(false)
 
-  const entries = Array.from(downloads.entries())
-
   // Single-pass stats computation
-  const { doneCount, skippedCount, errorCount, activeCount } = useMemo(() => {
+  const { entries, doneCount, skippedCount, errorCount, activeCount } = useMemo(() => {
+    const e = Array.from(downloads.entries())
     let done = 0, skipped = 0, error = 0, active = 0
-    for (const [, d] of entries) {
+    for (const [, d] of e) {
       if (d.status === 'done') done++
       else if (d.status === 'skipped') skipped++
       else if (d.status === 'error') error++
       else active++
     }
-    return { doneCount: done, skippedCount: skipped, errorCount: error, activeCount: active }
-  }, [entries])
+    return { entries: e, doneCount: done, skippedCount: skipped, errorCount: error, activeCount: active }
+  }, [downloads])
 
   const handleRedownload = async (): Promise<void> => {
     setShowRedownloadConfirm(false)

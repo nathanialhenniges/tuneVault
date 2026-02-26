@@ -55,6 +55,8 @@ export function LibraryView(): JSX.Element {
     const state = location.state as { playlistFilter?: string } | null
     if (state?.playlistFilter) {
       setPlaylistFilter(state.playlistFilter)
+    } else {
+      setPlaylistFilter('all')
     }
   }, [location.state])
 
@@ -83,7 +85,7 @@ export function LibraryView(): JSX.Element {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col flex-1 min-h-0 space-y-5">
       {/* Header */}
       <div>
         <div className="flex items-center justify-between mb-4">

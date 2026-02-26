@@ -67,7 +67,7 @@ export function QueueView({ open, onClose }: QueueViewProps): JSX.Element | null
   return (
     <div
       ref={panelRef}
-      className="absolute bottom-full right-0 mb-2 w-80 max-h-96 glass-float glass-border-float overflow-hidden transition-colors duration-200 glass-reveal"
+      className="absolute bottom-full right-0 mb-2 w-80 max-h-96 glass-float glass-border-float overflow-hidden flex flex-col transition-colors duration-200 glass-reveal"
       style={{ borderRadius: 'var(--radius-panel)' }}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--glass-border-edge)]">
@@ -89,7 +89,7 @@ export function QueueView({ open, onClose }: QueueViewProps): JSX.Element | null
         </div>
       </div>
 
-      <div className="overflow-y-auto max-h-80">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {upcoming.length === 0 ? (
           <p className="text-sm text-text-muted p-4 text-center">Queue is empty</p>
         ) : (

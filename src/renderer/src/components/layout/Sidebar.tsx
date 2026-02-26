@@ -35,7 +35,7 @@ export function Sidebar(): JSX.Element {
         <h1 className="text-sm font-bold tracking-wide text-accent no-drag font-display">TuneVault</h1>
       </div>
 
-      <nav className="flex-1 py-2 px-2">
+      <nav className="flex-1 min-h-0 py-2 px-2">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path
           return (
@@ -62,7 +62,7 @@ export function Sidebar(): JSX.Element {
       </nav>
 
       {recentPlaylists.length > 0 && (
-        <div className="border-t border-[var(--glass-border-edge)] py-2 px-2">
+        <div className="border-t border-[var(--glass-border-edge)] py-2 px-2 min-h-0 overflow-y-auto">
           <p className="px-3 py-1 text-xs text-text-muted uppercase tracking-wider">
             Downloaded
           </p>
