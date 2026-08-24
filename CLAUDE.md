@@ -32,10 +32,13 @@ Three processes, strict boundaries:
 2. **Every filesystem path goes through the escape guard.** `assertInside()` in
    `device.service.ts` rejects anything outside the music root. A hand-edited
    `settings.json` must not be able to make the app delete `/`.
-3. **The storage cap is checked twice.** Once as an estimate in
-   `DownloadService.preflight` (for the UI), and again against real on-disk
-   usage before each individual track in `DownloadService.start`. The second
-   check is what actually guarantees the cap; the first is only a preview.
+3. **The storage cap is checked twice, and only one of them counts.**
+   `DownloadService.preflight` produces an estimate for the UI; it is advisory
+   and users can override it with `ignoreEstimate`. The real check reads on-disk
+   usage **before writing each track** in `DownloadService.start`, and is never
+   overridable. It has to stay *before* the write: an earlier version only fired
+   once the folder was already over capacity, which let the last track breach
+   the limit.
 4. **Never auto-delete to make room.** A full device fails the download. The
    only deletions are ones the user explicitly asks for.
 5. **Keep `yt-dlp` current.** `YTDLP_VERSION` in
@@ -103,8 +106,23 @@ checking the path resolves inside `musicRoot` before reading anything.
 Default is one copy of a song per device, across all its playlist folders.
 `trackKey(artist, title)` is the identity: track number is excluded on purpose,
 because the same song sits at a different position in every playlist.
-`DeviceService.existingTrackKeys` builds the index from **filenames**, not tags,
-so the check costs no file reads. Both downloading and importing honour it, and
+
+`DeviceService.existingTrackIndex` reads the files' **ID3 tags**, falling back
+to the filename. It returns two sets:
+
+- `full` — artist + title, the reliable comparison.
+- `titleOnly` — for files whose artist cannot be determined. Those are matched
+  on title alone, which is looser but far better than the alternative.
+
+An earlier version indexed filenames only and dropped any file without a
+parseable `NN - Artist - Title` name. Measured against a real device: it covered
+**41 of 143 files**, so the other 102 were re-downloaded on every run. Tags cover
+all 143. Filenames are also sanitised, so `A*S*Y*S` is stored as `ASYS` and only
+the tag matches the source.
+
+Use `isAlreadyPresent(sets, artist, title)` rather than testing the sets by
+hand — it handles the artist/title fallback and the "Unknown Artist" family of
+placeholders. Both downloading and importing honour it;
 `settings.allowDuplicates` turns it off.
 
 ## Rate limits

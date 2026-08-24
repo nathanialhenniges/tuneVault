@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import {
+  artistVariants,
+  hasUsableArtist,
+  isAlreadyPresent,
   parseTrackFileName,
+  toTrackIndexSets,
   trackKey,
+  trackKeysFor,
+  trackTitleKey,
   sanitizeFilename,
   trackFileBaseName,
   buildM3U,
@@ -89,6 +95,85 @@ describe('trackKey', () => {
   })
   it('does not collide across the artist/title boundary', () => {
     expect(trackKey('a b', 'c')).not.toBe(trackKey('a', 'b c'))
+  })
+})
+
+describe('hasUsableArtist', () => {
+  it('rejects the placeholders that mean "we do not know"', () => {
+    for (const value of ['', '   ', 'Unknown Artist', 'unknown', 'Various Artists']) {
+      expect(hasUsableArtist(value)).toBe(false)
+    }
+  })
+  it('accepts a real name', () => {
+    expect(hasUsableArtist('Tame Impala')).toBe(true)
+  })
+})
+
+describe('isAlreadyPresent', () => {
+  const sets = toTrackIndexSets({
+    full: [trackKey('Muse', 'Hysteria')],
+    titleOnly: [trackTitleKey('alpha-protocol')]
+  })
+
+  it('matches on artist and title', () => {
+    expect(isAlreadyPresent(sets, 'Muse', 'Hysteria')).toBe(true)
+  })
+  it('does not match a different song by the same artist', () => {
+    expect(isAlreadyPresent(sets, 'Muse', 'Starlight')).toBe(false)
+  })
+  it('does not match the same title by a different artist', () => {
+    expect(isAlreadyPresent(sets, 'Def Leppard', 'Hysteria')).toBe(false)
+  })
+  it('falls back to the title for a file that had no readable artist', () => {
+    // This is the case that used to slip through and re-download every run.
+    expect(isAlreadyPresent(sets, 'DevBowser', 'Alpha Protocol')).toBe(true)
+  })
+  it('matches an incoming track whose artist is a placeholder', () => {
+    expect(isAlreadyPresent(sets, 'Unknown Artist', 'alpha protocol')).toBe(true)
+  })
+  it('reports nothing present for an empty index', () => {
+    const empty = toTrackIndexSets({ full: [], titleOnly: [] })
+    expect(isAlreadyPresent(empty, 'Muse', 'Hysteria')).toBe(false)
+  })
+})
+
+describe('artistVariants', () => {
+  it('keeps the whole credit and each contributor', () => {
+    expect(artistVariants('Avicii, DevBowser')).toEqual(['Avicii, DevBowser', 'Avicii', 'DevBowser'])
+  })
+  it('splits the usual collaboration markers', () => {
+    for (const input of ['A & B', 'A feat. B', 'A ft B', 'A x B', 'A vs. B', 'A with B']) {
+      expect(artistVariants(input)).toContain('B')
+    }
+  })
+  it('does not duplicate a single artist', () => {
+    expect(artistVariants('Muse')).toEqual(['Muse'])
+  })
+  it('returns nothing for a placeholder', () => {
+    expect(artistVariants('Unknown Artist')).toEqual([])
+  })
+})
+
+describe('collaboration matching', () => {
+  // The real case: the Music app credits the collaboration, the file on disk
+  // is tagged with one contributor.
+  const sets = toTrackIndexSets({
+    full: trackKeysFor('DevBowser', 'The Nights (DevBowser Hardstyle Remix)'),
+    titleOnly: []
+  })
+
+  it('matches when the incoming credit lists more artists than the file', () => {
+    expect(
+      isAlreadyPresent(sets, 'Avicii, DevBowser', 'The Nights (DevBowser Hardstyle Remix)')
+    ).toBe(true)
+  })
+
+  it('still requires the title to match', () => {
+    expect(isAlreadyPresent(sets, 'Avicii, DevBowser', 'Levels')).toBe(false)
+  })
+
+  it('does not match an unrelated artist sharing nothing', () => {
+    expect(isAlreadyPresent(sets, 'Muse', 'The Nights (DevBowser Hardstyle Remix)')).toBe(false)
   })
 })
 

@@ -106,10 +106,19 @@ Private playlists cannot be read.
 ### Duplicates
 
 By default a device holds one copy of any given song. If two playlists share a
-track, the second one is skipped rather than downloaded and stored again -
-matching is on artist and title, ignoring track number, case and punctuation.
-Importing your own files obeys the same rule. **Settings > Allow the same song
-more than once** turns it off.
+track, the second one is skipped rather than downloaded and stored again.
+
+Matching reads each file's own ID3 tags - artist and title, ignoring track
+number, case and punctuation - and falls back to the filename. Files with no
+readable artist are matched on title alone, so a track dragged in from Finder
+still counts as present. Importing obeys the same rule.
+
+Tracks already on a device are hidden from import lists by default, so a list
+shows only what is missing. The list has a Show/Hide toggle, and
+**Settings > Hide tracks already on the device** sets the default.
+
+**Settings > Allow the same song more than once** turns duplicate protection
+off entirely.
 
 ### Importing from the Music app
 
@@ -156,9 +165,17 @@ between accounts.
 
 ### Storage limits
 
-The limit is checked twice: once as an estimate when you load a playlist, and
-again against real on-disk usage before every individual track. A wrong
-estimate can therefore never cause a device to exceed its cap. Removing a
+The limit is checked twice, and the two are different in kind:
+
+- **The estimate**, worked out from track lengths and a nominal bitrate when you
+  load a playlist. It is advisory and can be wrong, so when it blocks a download
+  you can tick **Download anyway** to ignore it for that run.
+- **The real byte count on disk**, checked before every single track is written.
+  This one is not overridable. A track that would take the device over is
+  skipped and the run continues, since a shorter one later may still fit; only
+  genuinely running out of room stops the run.
+
+Removing a
 device asks, in a native sheet, whether to keep the files or move them to the
 Trash. Nothing is ever erased outright - deletions go to the Trash, so they can
 be put back.

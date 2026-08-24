@@ -4,7 +4,16 @@ import { basename, extname, join, resolve, sep } from 'path'
 import { shell } from 'electron'
 import type { Device, DeviceFile, DeviceUsage, PlaylistSource } from '../../shared/models'
 import { TagService } from './tag.service'
-import { parseTrackFileName, sanitizeFilename, trackKey } from '../../shared/utils'
+import {
+  hasUsableArtist,
+  isAlreadyPresent,
+  parseTrackFileName,
+  sanitizeFilename,
+  toTrackIndexSets,
+  trackKeysFor,
+  trackTitleKey,
+  type TrackIndex
+} from '../../shared/utils'
 import { SettingsService } from './settings.service'
 
 const AUDIO_EXT = new Set(['.mp3', '.flac', '.opus', '.m4a', '.ogg', '.wav', '.aac', '.aiff', '.m4b'])
@@ -250,19 +259,37 @@ export class DeviceService {
 
   /**
    * Identities of every song already on the device, across all its playlist
-   * folders. Built from filenames rather than tags: our own downloads are named
-   * "NN - Artist - Title", so this needs no file reads at all.
+   * folders.
+   *
+   * Reads the files' own ID3 tags, falling back to the filename. An earlier
+   * version used filenames only, which meant anything not named
+   * "NN - Artist - Title" — every file dragged in from Finder — produced no
+   * artist, was left out of the index entirely, and got downloaded again on
+   * every run. Tag reads are header-only and cached, so this stays cheap.
    */
-  static async existingTrackKeys(id: string): Promise<Set<string>> {
+  static async existingTrackIndex(id: string): Promise<TrackIndex> {
     const device = this.get(id)
     const files = await walk(device.dir)
-    const keys = new Set<string>()
+    const full = new Set<string>()
+    const titleOnly = new Set<string>()
+
     for (const f of files) {
       const name = f.path.slice(f.path.lastIndexOf(sep) + 1)
       const parsed = parseTrackFileName(name)
-      if (parsed.artist) keys.add(trackKey(parsed.artist, parsed.title))
+      const tags = await readTagsCached(f.path, f.size, f.mtimeMs)
+
+      const title = tags?.title || parsed.title
+      const artist = tags?.artist || parsed.artist
+      if (!title) continue
+
+      // Filed under the whole credit and each contributor, so a collaboration
+      // still matches a file tagged with only one of them.
+      if (hasUsableArtist(artist)) for (const k of trackKeysFor(artist as string, title)) full.add(k)
+      // Indexed either way: a file we cannot attribute still occupies the
+      // device, and is still the song someone is about to download again.
+      else titleOnly.add(trackTitleKey(title))
     }
-    return keys
+    return { full: [...full], titleOnly: [...titleOnly] }
   }
 
   /**
@@ -308,7 +335,9 @@ export class DeviceService {
 
     // Importing obeys the same duplicate rule as downloading.
     const { allowDuplicates } = SettingsService.load()
-    const seen = allowDuplicates ? new Set<string>() : await this.existingTrackKeys(id)
+    const seen = toTrackIndexSets(
+      allowDuplicates ? { full: [], titleOnly: [] } : await this.existingTrackIndex(id)
+    )
 
     for (const source of paths) {
       const name = basename(source)
@@ -336,9 +365,13 @@ export class DeviceService {
         continue
       }
 
+      // Prefer what the incoming file says about itself over its name.
       const parsed = parseTrackFileName(name)
-      const key = parsed.artist ? trackKey(parsed.artist, parsed.title) : null
-      if (!allowDuplicates && key && seen.has(key)) {
+      const tags = await TagService.read(source).catch(() => null)
+      const title = tags?.title || parsed.title
+      const artist = tags?.artist || parsed.artist || ''
+
+      if (!allowDuplicates && title && isAlreadyPresent(seen, artist, title)) {
         result.skipped++
         continue
       }
@@ -351,7 +384,12 @@ export class DeviceService {
       try {
         await fs.copyFile(source, dest)
         used += size
-        if (key) seen.add(key)
+        // Keep the index current so a batch containing the same song twice
+        // only copies it once.
+        if (title) {
+          if (hasUsableArtist(artist)) for (const k of trackKeysFor(artist, title)) seen.full.add(k)
+          else seen.titleOnly.add(trackTitleKey(title))
+        }
         result.copied++
       } catch (err) {
         result.errors.push({ name, message: (err as Error).message })

@@ -107,6 +107,92 @@ export function trackKey(artist: string, title: string): string {
 }
 
 /**
+ * Every artist string a credit could reasonably be filed under.
+ *
+ * A collaboration is credited inconsistently across sources: the Music app says
+ * "Avicii, DevBowser" while the file on disk is tagged just "DevBowser". Keying
+ * on the exact string alone means the two never meet and the track is fetched
+ * again. Indexing each contributor separately lets either spelling match.
+ *
+ * The title still has to match, so this cannot merge two different songs — the
+ * worst case is a solo version and a collaboration that share a title exactly.
+ */
+export function artistVariants(artist: string): string[] {
+  if (!hasUsableArtist(artist)) return []
+  const whole = artist.trim()
+  const parts = whole
+    // `\b` goes before the optional dot: "feat\.?\b" never matches "feat. B",
+    // because there is no word boundary between the dot and the space.
+    .split(/\s*(?:,|&|\+|\bfeat\b\.?|\bft\b\.?|\bwith\b|\bvs\b\.?|\bx\b)\s*/i)
+    .map((part) => part.trim())
+    .filter((part) => hasUsableArtist(part))
+
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const candidate of [whole, ...parts]) {
+    const normalised = trackKey(candidate, '')
+    if (seen.has(normalised)) continue
+    seen.add(normalised)
+    out.push(candidate)
+  }
+  return out
+}
+
+/** Normalised title alone, for files that carry no artist at all. */
+export function trackTitleKey(title: string): string {
+  return trackKey('', title)
+}
+
+/**
+ * What a device already holds, in the two forms a match can take.
+ *
+ * `full` is artist + title, which is the reliable comparison. `titleOnly` holds
+ * entries for files whose artist could not be determined — an import named
+ * "01-alpha-protocol.mp3" with no tags, say. Those cannot be compared on
+ * artist, so they are matched on title, which is looser but far better than the
+ * previous behaviour: a file with no readable artist was simply left out of the
+ * index and downloaded again every time.
+ */
+export interface TrackIndex {
+  full: string[]
+  titleOnly: string[]
+}
+
+export const EMPTY_TRACK_INDEX: TrackIndex = { full: [], titleOnly: [] }
+
+/** Set-backed view of a TrackIndex, for repeated lookups. */
+export function toTrackIndexSets(index: TrackIndex): {
+  full: Set<string>
+  titleOnly: Set<string>
+} {
+  return { full: new Set(index.full), titleOnly: new Set(index.titleOnly) }
+}
+
+const UNKNOWN_ARTIST = /^(unknown artist|unknown|various artists|va)$/i
+
+export function hasUsableArtist(artist: string | undefined | null): boolean {
+  return !!artist && artist.trim().length > 0 && !UNKNOWN_ARTIST.test(artist.trim())
+}
+
+/** Is this song already accounted for by the index? */
+export function isAlreadyPresent(
+  sets: { full: Set<string>; titleOnly: Set<string> },
+  artist: string,
+  title: string
+): boolean {
+  for (const candidate of artistVariants(artist)) {
+    if (sets.full.has(trackKey(candidate, title))) return true
+  }
+  // Either side missing an artist falls back to a title comparison.
+  return sets.titleOnly.has(trackTitleKey(title))
+}
+
+/** The keys a track should be filed under when adding it to an index. */
+export function trackKeysFor(artist: string, title: string): string[] {
+  return artistVariants(artist).map((candidate) => trackKey(candidate, title))
+}
+
+/**
  * Build an extended-M3U playlist (the universal format MP3 players and
  * iPods-via-iTunes understand). fileName entries are relative — the audio is
  * expected to sit alongside the .m3u8 file.

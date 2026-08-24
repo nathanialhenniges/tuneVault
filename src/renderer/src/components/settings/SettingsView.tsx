@@ -217,6 +217,25 @@ export function SettingsView(): React.JSX.Element {
         <label className="flex cursor-pointer items-start gap-3 border-t border-hairline pt-4">
           <input
             type="checkbox"
+            checked={settings.hideAlreadyOnDevice}
+            onChange={(e) => void update({ hideAlreadyOnDevice: e.target.checked })}
+            className="mt-0.5 h-4 w-4"
+          />
+          <span>
+            <span className="block text-sm font-medium">
+              Hide tracks already on the device
+            </span>
+            <span className="block text-xs text-text-muted">
+              Keeps an import list to just what is actually missing. Turn this off to see every
+              track, with the ones you already have marked. There is a Show/Hide toggle on the list
+              itself for a one-off look.
+            </span>
+          </span>
+        </label>
+
+        <label className="flex cursor-pointer items-start gap-3 border-t border-hairline pt-4">
+          <input
+            type="checkbox"
             checked={settings.allowDuplicates}
             onChange={(e) => void update({ allowDuplicates: e.target.checked })}
             className="mt-0.5 h-4 w-4"

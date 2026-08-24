@@ -14,9 +14,13 @@ import {
   checkCap,
   estimateBytes,
   formatBytes,
+  hasUsableArtist,
+  isAlreadyPresent,
   sanitizeFilename,
+  toTrackIndexSets,
   trackFileBaseName,
-  trackKey
+  trackKeysFor,
+  trackTitleKey
 } from '../../shared/utils'
 import { BinaryService } from './binary.service'
 import { cookieArgs } from './cookies.service'
@@ -231,9 +235,11 @@ export class DownloadService {
      * Mutated as the run proceeds so a playlist containing the same song twice
      * also only fetches it once.
      */
-    const seen = settings.allowDuplicates
-      ? new Set<string>()
-      : await DeviceService.existingTrackKeys(device.id)
+    const seen = toTrackIndexSets(
+      settings.allowDuplicates
+        ? { full: [], titleOnly: [] }
+        : await DeviceService.existingTrackIndex(device.id)
+    )
     const done: { track: Track; fileName: string }[] = []
 
     let next = 0
@@ -254,8 +260,6 @@ export class DownloadService {
           detail?: string
         ): void => emit({ jobId: runId, trackId: track.id, status, percent, detail })
 
-        const key = trackKey(track.artist, track.title)
-
         try {
           if (!request.forceRedownload) {
             const existing = await fs.stat(filePath).catch(() => null)
@@ -265,16 +269,17 @@ export class DownloadService {
               report('skipped', 100, 'Already downloaded')
               continue
             }
-            // Same song, different playlist folder on this device.
-            if (!settings.allowDuplicates && seen.has(key)) {
+            // Same song, different playlist folder on this device — matched on
+            // tags, so a hand-dropped file counts too.
+            if (!settings.allowDuplicates && isAlreadyPresent(seen, track.artist, track.title)) {
               summary.skipped++
               report('skipped', 100, 'Already on this device')
               continue
             }
           }
 
-          // Re-check the cap per track. The preflight estimate can be wrong, so
-          // this is what actually guarantees a device never exceeds its limit.
+          // Re-check the cap per track against what is actually on disk. This,
+          // not the preflight estimate, is what guarantees the limit holds.
           const usage = await DeviceService.usage(device.id)
           if (usage.usedBytes >= usage.capacityBytes) {
             const message = `Device is full (${formatBytes(usage.usedBytes)} of ${formatBytes(
@@ -283,8 +288,21 @@ export class DownloadService {
             summary.failed++
             summary.errors.push({ title: track.title, message })
             report('error', 0, message)
-            controller.abort() // no point trying the rest
+            controller.abort() // genuinely out of room; nothing else will fit
             break
+          }
+
+          // Would this track take it over? Checked before writing, so the cap
+          // holds rather than being noticed one file too late. Skipped rather
+          // than fatal: a shorter track later in the run may still fit.
+          if (!request.ignoreEstimate) {
+            const projected = usage.usedBytes + estimateBytes([track], format)
+            if (projected > usage.capacityBytes) {
+              const message = `Would exceed the ${formatBytes(usage.capacityBytes)} limit.`
+              summary.skipped++
+              report('skipped', 0, message)
+              continue
+            }
           }
 
           // Music app tracks arrive without a source URL: matching every track
@@ -292,7 +310,10 @@ export class DownloadService {
           // here, for the tracks actually chosen.
           if (track.needsMatch && !track.sourceUrl) {
             report('downloading', 0, 'Finding a match…')
-            const hit = await searchOne(`${track.artist} ${track.title}`, key)
+            const hit = await searchOne(
+              `${track.artist} ${track.title}`,
+              trackKeysFor(track.artist, track.title)[0] ?? trackTitleKey(track.title)
+            )
             if (!hit) {
               const message = 'No match found on YouTube or SoundCloud.'
               summary.failed++
@@ -330,7 +351,11 @@ export class DownloadService {
           }
 
           summary.completed++
-          seen.add(key)
+          if (hasUsableArtist(track.artist)) {
+            for (const k of trackKeysFor(track.artist, track.title)) seen.full.add(k)
+          } else {
+            seen.titleOnly.add(trackTitleKey(track.title))
+          }
           done.push({ track, fileName })
           report('complete', 100)
         } catch (err) {

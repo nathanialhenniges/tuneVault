@@ -103,9 +103,7 @@ export function registerIpc(getWindow: GetWindow): void {
   ipcMain.handle(IPC.DEVICE_REVEAL_TRACK, (_e, id: string, path: string) =>
     DeviceService.revealTrack(id, path)
   )
-  ipcMain.handle(IPC.DEVICE_TRACK_KEYS, async (_e, id: string) => [
-    ...(await DeviceService.existingTrackKeys(id))
-  ])
+  ipcMain.handle(IPC.DEVICE_TRACK_KEYS, (_e, id: string) => DeviceService.existingTrackIndex(id))
   ipcMain.handle(IPC.DEVICE_FORGET_SOURCE, (_e, id: string, url: string) =>
     DeviceService.forgetSource(id, url)
   )

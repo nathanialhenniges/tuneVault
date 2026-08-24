@@ -172,6 +172,15 @@ export interface DownloadRequest {
   /** Subset of `playlist.tracks` ids the user actually wants. */
   trackIds: string[]
   forceRedownload?: boolean
+  /**
+   * Skip the per-track size *estimate* check.
+   *
+   * The estimate is derived from duration and a nominal bitrate, so it can be
+   * wrong in either direction and block a download that would actually fit.
+   * This does not lift the device's storage limit: the real on-disk check still
+   * stops the run when the folder genuinely reaches capacity.
+   */
+  ignoreEstimate?: boolean
 }
 
 export interface AppSettings {
@@ -183,6 +192,15 @@ export interface AppSettings {
   concurrency: number
   /** Look up genre + cover art from MusicBrainz/iTunes while downloading. */
   metadataEnrichment: boolean
+  /**
+   * Hide tracks already on the device from an import list, rather than showing
+   * them greyed out. On by default: they cannot be downloaded again anyway, so
+   * showing them is noise and an invitation to tick one by mistake.
+   *
+   * Ignored when `allowDuplicates` is on, since then nothing is redundant.
+   */
+  hideAlreadyOnDevice: boolean
+
   /**
    * Where yt-dlp should get cookies from, if anywhere.
    *
@@ -217,6 +235,7 @@ export const DEFAULT_SETTINGS: Omit<AppSettings, 'musicRoot'> = {
   concurrency: 3,
   metadataEnrichment: true,
   allowDuplicates: false,
+  hideAlreadyOnDevice: true,
   cookieMode: 'off',
   cookieBrowser: 'chrome',
   cookieProfile: '',

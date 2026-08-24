@@ -2,7 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDownTrayIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import type { Playlist, ResolveProgress } from '../../../../shared/models'
 import type { Preflight } from '../../../../preload'
-import { formatBytes, formatDuration, PROVIDER_LABEL, trackKey } from '../../../../shared/utils'
+import {
+  EMPTY_TRACK_INDEX,
+  formatBytes,
+  formatDuration,
+  isAlreadyPresent,
+  PROVIDER_LABEL,
+  toTrackIndexSets
+} from '../../../../shared/utils'
 import { api } from '../../lib/api'
 import { useDownloadStore } from '../../store/downloadStore'
 import { useSettingsStore } from '../../store/settingsStore'
@@ -49,9 +56,11 @@ export function AddMusicPanel({ deviceId, loadRequest }: Props): React.JSX.Eleme
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [preflight, setPreflight] = useState<Preflight | null>(null)
   const [resolveProgress, setResolveProgress] = useState<ResolveProgress | null>(null)
-  /** Identities of songs already on this device, for marking and preselection. */
-  const [onDevice, setOnDevice] = useState<Set<string>>(new Set())
+  /** What is already on this device, for marking and preselection. */
+  const [onDevice, setOnDevice] = useState(() => toTrackIndexSets(EMPTY_TRACK_INDEX))
   const [filter, setFilter] = useState('')
+  /** Empty means "every genre"; otherwise only these are shown. */
+  const [genres, setGenres] = useState<Set<string>>(new Set())
   /** Anchor for shift-click range selection. */
   const lastToggled = useRef<number | null>(null)
 
@@ -60,6 +69,11 @@ export function AddMusicPanel({ deviceId, loadRequest }: Props): React.JSX.Eleme
   /** Ids submitted to the run in flight, so the bar counts the right tracks. */
   const [runTrackIds, setRunTrackIds] = useState<string[]>([])
   const allowDuplicates = useSettingsStore((s) => s.settings?.allowDuplicates ?? false)
+  const hideByDefault = useSettingsStore((s) => s.settings?.hideAlreadyOnDevice ?? true)
+  /** Per-list override of the setting, reset each time a playlist is loaded. */
+  const [showPresent, setShowPresent] = useState(false)
+  /** Proceed despite the size estimate saying it will not fit. */
+  const [ignoreEstimate, setIgnoreEstimate] = useState(false)
 
   useEffect(() => api.onResolveProgress(setResolveProgress), [])
 
@@ -68,8 +82,8 @@ export function AddMusicPanel({ deviceId, loadRequest }: Props): React.JSX.Eleme
     if (running) return
     void api.devices
       .trackKeys(deviceId)
-      .then((keys) => {
-        const present = new Set(keys)
+      .then((index) => {
+        const present = toTrackIndexSets(index)
         setOnDevice(present)
         // Untick whatever just landed on the device. Downloading it again would
         // be skipped anyway, but leaving it ticked reads as still-to-do and
@@ -78,14 +92,14 @@ export function AddMusicPanel({ deviceId, loadRequest }: Props): React.JSX.Eleme
         setSelected((prev) => {
           const next = new Set<string>()
           for (const track of tracksRef.current) {
-            if (prev.has(track.id) && !present.has(trackKey(track.artist, track.title))) {
+            if (prev.has(track.id) && !isAlreadyPresent(present, track.artist, track.title)) {
               next.add(track.id)
             }
           }
           return next
         })
       })
-      .catch(() => setOnDevice(new Set()))
+      .catch(() => setOnDevice(toTrackIndexSets(EMPTY_TRACK_INDEX)))
   }, [deviceId, running, allowDuplicates])
 
   const resolve = useCallback(
@@ -100,12 +114,14 @@ export function AddMusicPanel({ deviceId, loadRequest }: Props): React.JSX.Eleme
         setPlaylist(result)
         // Preselect only what is not already here, so re-checking a playlist
         // you have grown lands on exactly the new songs.
-        const keys = new Set(await api.devices.trackKeys(deviceId).catch(() => []))
-        setOnDevice(keys)
+        const present = toTrackIndexSets(
+          await api.devices.trackKeys(deviceId).catch(() => EMPTY_TRACK_INDEX)
+        )
+        setOnDevice(present)
         setSelected(
           new Set(
             result.tracks
-              .filter((t) => allowDuplicates || !keys.has(trackKey(t.artist, t.title)))
+              .filter((t) => allowDuplicates || !isAlreadyPresent(present, t.artist, t.title))
               .map((t) => t.id)
           )
         )
@@ -139,15 +155,29 @@ export function AddMusicPanel({ deviceId, loadRequest }: Props): React.JSX.Eleme
    * "Select all" acts on what is visible, which is what makes the filter useful
    * on a 3,800-track library import.
    */
+  // Hiding only applies while duplicates are actually being prevented.
+  const hidingPresent = hideByDefault && !allowDuplicates && !showPresent
+
   const visible = useMemo(() => {
     const q = filter.trim().toLowerCase()
-    if (!q) return tracks
-    return tracks.filter((t) =>
-      [t.title, t.artist, t.album, t.genre]
+    return tracks.filter((t) => {
+      if (hidingPresent && isAlreadyPresent(onDevice, t.artist, t.title)) return false
+      if (genres.size > 0 && !(t.genre && genres.has(t.genre))) return false
+      if (!q) return true
+      return [t.title, t.artist, t.album, t.genre]
         .filter(Boolean)
         .some((value) => (value as string).toLowerCase().includes(q))
-    )
-  }, [tracks, filter])
+    })
+  }, [tracks, filter, genres, hidingPresent, onDevice])
+
+  /** Genres present in this playlist, commonest first. */
+  const genreOptions = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const track of tracks) {
+      if (track.genre) counts.set(track.genre, (counts.get(track.genre) ?? 0) + 1)
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+  }, [tracks])
   const chosen = tracks.filter((t) => selected.has(t.id))
   const totalDuration = chosen.reduce((sum, t) => sum + t.duration, 0)
 
@@ -194,7 +224,7 @@ export function AddMusicPanel({ deviceId, loadRequest }: Props): React.JSX.Eleme
   /** Select-all reflects the filtered view, not the whole playlist. */
   const visibleSelected = visible.filter((t) => selected.has(t.id)).length
   const allSelected = visible.length > 0 && visibleSelected === visible.length
-  const alreadyHere = tracks.filter((t) => onDevice.has(trackKey(t.artist, t.title))).length
+  const alreadyHere = tracks.filter((t) => isAlreadyPresent(onDevice, t.artist, t.title)).length
 
   // Tracks that still need a YouTube match are the rate-limited part of a run;
   // local files and already-matched tracks cost nothing.
@@ -289,10 +319,25 @@ export function AddMusicPanel({ deviceId, loadRequest }: Props): React.JSX.Eleme
                 incomingBytes={preflight.incomingBytes}
               />
               {!preflight.fits && (
-                <p className="mt-2.5 text-sm font-medium text-danger">
-                  Needs {formatBytes(preflight.shortfallBytes)} more room. Deselect some tracks,
-                  free space on the device, or raise its storage limit.
-                </p>
+                <div className="mt-2.5 space-y-2">
+                  <p className="text-sm font-medium text-danger">
+                    Estimated {formatBytes(preflight.shortfallBytes)} over the limit. Deselect some
+                    tracks, free space on the device, or raise its storage limit.
+                  </p>
+                  <label className="flex cursor-pointer items-start gap-2.5 text-xs text-text-muted">
+                    <input
+                      type="checkbox"
+                      checked={ignoreEstimate}
+                      onChange={(e) => setIgnoreEstimate(e.target.checked)}
+                      className="mt-0.5 h-3.5 w-3.5"
+                    />
+                    <span>
+                      Download anyway — the estimate is worked out from track lengths, so it can be
+                      wrong. The device&apos;s storage limit still applies: the run downloads what
+                      genuinely fits and stops when the folder is actually full.
+                    </span>
+                  </label>
+                </div>
               )}
             </div>
           )}
@@ -305,6 +350,48 @@ export function AddMusicPanel({ deviceId, loadRequest }: Props): React.JSX.Eleme
               startedAt={startedAt}
               onStop={cancel}
             />
+          )}
+
+          {/* Genres are only known for sources that report them — the Music
+              app does, a scraped web page generally does not — so the row is
+              simply absent when there is nothing to filter by. */}
+          {genreOptions.length > 1 && (
+            <div className="flex flex-wrap items-center gap-1.5 border-b border-hairline px-5 py-3">
+              <span className="mr-1 text-xs text-text-muted">Genre</span>
+              <button
+                onClick={() => setGenres(new Set())}
+                aria-pressed={genres.size === 0}
+                className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
+                  genres.size === 0
+                    ? 'bg-accent text-ink'
+                    : 'bg-surface-2 text-text-muted hover:text-text'
+                }`}
+              >
+                All
+              </button>
+              {genreOptions.map(([genre, count]) => {
+                const on = genres.has(genre)
+                return (
+                  <button
+                    key={genre}
+                    aria-pressed={on}
+                    onClick={() =>
+                      setGenres((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(genre)) next.delete(genre)
+                        else next.add(genre)
+                        return next
+                      })
+                    }
+                    className={`tabular rounded-full px-2.5 py-1 text-xs transition-colors ${
+                      on ? 'bg-accent text-ink' : 'bg-surface-2 text-text-muted hover:text-text'
+                    }`}
+                  >
+                    {genre} <span className="opacity-70">{count}</span>
+                  </button>
+                )
+              })}
+            </div>
           )}
 
           {/* Sticky so the select-all control and the column meaning stay
@@ -332,8 +419,20 @@ export function AddMusicPanel({ deviceId, loadRequest }: Props): React.JSX.Eleme
                 className="h-4 w-4"
               />
               {allSelected ? 'Select none' : 'Select all'}
-              {filter.trim() && ` (${visible.length} shown)`}
+              {(filter.trim() || genres.size > 0 || hidingPresent) &&
+                ` (${visible.length} shown)`}
             </label>
+
+            {alreadyHere > 0 && !allowDuplicates && (
+              <button
+                onClick={() => setShowPresent((v) => !v)}
+                className="shrink-0 text-xs text-text-muted underline decoration-dotted underline-offset-2 transition-colors hover:text-text"
+              >
+                {hidingPresent
+                  ? `${alreadyHere} already on this device — show`
+                  : `${alreadyHere} already on this device — hide`}
+              </button>
+            )}
 
             <div className="relative ml-auto w-56">
               <MagnifyingGlassIcon
@@ -359,7 +458,7 @@ export function AddMusicPanel({ deviceId, loadRequest }: Props): React.JSX.Eleme
                 selected={selected.has(track.id)}
                 disabled={running}
                 state={progress[track.id]}
-                onDevice={onDevice.has(trackKey(track.artist, track.title))}
+                onDevice={isAlreadyPresent(onDevice, track.artist, track.title)}
                 onToggle={toggle}
               />
             ))}
@@ -402,12 +501,12 @@ export function AddMusicPanel({ deviceId, loadRequest }: Props): React.JSX.Eleme
               {!running && (
                 <Button
                   variant="primary"
-                  disabled={selected.size === 0 || !preflight?.fits}
+                  disabled={selected.size === 0 || !(preflight?.fits || ignoreEstimate)}
                   onClick={() => {
                     if (!playlist) return
                     const ids = [...selected]
                     setRunTrackIds(ids)
-                    void start({ deviceId, playlist, trackIds: ids })
+                    void start({ deviceId, playlist, trackIds: ids, ignoreEstimate })
                   }}
                 >
                   <ArrowDownTrayIcon className="h-4 w-4" aria-hidden="true" />

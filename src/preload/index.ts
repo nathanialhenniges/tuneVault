@@ -14,6 +14,8 @@ import type {
 } from '../shared/models'
 
 export type { DeviceFile } from '../shared/models'
+import type { TrackIndex } from '../shared/utils'
+export type { TrackIndex } from '../shared/utils'
 
 /** Subscribe helper — returns an unsubscribe function for use in useEffect. */
 function on<T>(channel: string, handler: (payload: T) => void): () => void {
@@ -86,7 +88,7 @@ const api = {
     revealTrack: (id: string, path: string): Promise<void> =>
       ipcRenderer.invoke(IPC.DEVICE_REVEAL_TRACK, id, path),
     /** Identities of every song already on the device, for duplicate marking. */
-    trackKeys: (id: string): Promise<string[]> => ipcRenderer.invoke(IPC.DEVICE_TRACK_KEYS, id),
+    trackKeys: (id: string): Promise<TrackIndex> => ipcRenderer.invoke(IPC.DEVICE_TRACK_KEYS, id),
     forgetSource: (id: string, url: string): Promise<void> =>
       ipcRenderer.invoke(IPC.DEVICE_FORGET_SOURCE, id, url),
     importFiles: (id: string, paths: string[]): Promise<ImportResult> =>

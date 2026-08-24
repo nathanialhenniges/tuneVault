@@ -65,6 +65,25 @@ music player.
   the page, then matching track *n* of *m* — instead of blocking silently, and
   the input is locked while it works.
 - **Filters** on both the imported track list and the device's own file list.
+- **Genre filter** on the imported track list, as chips with counts, for sources
+  that report a genre.
+- **Duplicate checking now reads ID3 tags**, falling back to the filename, and
+  matches on title alone when a file has no readable artist. The previous
+  filename-only index covered 41 of 143 files on a real device, so the other 102
+  were re-downloaded every run. Filenames are also sanitised, so a file tagged
+  `A*S*Y*S` is stored as `ASYS` and only the tag matches the source.
+- **Collaborations are filed under each contributor**, so a credit of
+  `Avicii, DevBowser` matches a file tagged just `DevBowser`. Splits on `,`,
+  `&`, `+`, `feat.`, `ft.`, `x`, `vs` and `with`; the title must still match
+  exactly, so two different songs can never merge.
+- **Tracks already on the device are hidden from import lists by default**, with
+  a Show/Hide toggle on the list and a setting for the default. They could not
+  be downloaded again anyway, so listing them was noise and an invitation to
+  tick one by mistake.
+- **The size estimate can be overridden.** It is derived from track lengths and
+  a nominal bitrate, so it can block a download that would actually fit;
+  "Download anyway" skips it for that run. The device's real storage limit still
+  applies and is not overridable.
 - **Grouped library view.** Files are grouped by the playlist folder they came
   from, each group collapsible and showing its own track count and size, with a
   filter box that searches titles, artists, albums and genres.
@@ -97,6 +116,11 @@ music player.
   on every write; the schema is now enforced.
 - **Settings merge is simplified.** No nested objects remain, so the one
   hand-written deep-merge special case is gone.
+- **The storage limit is now checked before each write**, not after. It
+  previously only fired once the folder was already at or over capacity, so the
+  last track could push it past the limit before anything noticed. A track that
+  would exceed the limit is skipped and the run continues, since a shorter track
+  later on may still fit; only genuinely running out stops the run.
 - **Deletions go to the Trash** (`shell.trashItem`) instead of being unlinked,
   which makes them undoable from Finder — and is why deleting a single track no
   longer asks for confirmation.
