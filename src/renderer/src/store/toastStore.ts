@@ -1,35 +1,35 @@
 import { create } from 'zustand'
 
-export type ToastType = 'success' | 'error' | 'info'
+export type ToastKind = 'info' | 'success' | 'error'
 
 export interface Toast {
-  id: string
+  id: number
+  kind: ToastKind
   message: string
-  type: ToastType
 }
 
 interface ToastState {
   toasts: Toast[]
-  add: (message: string, type: ToastType) => void
-  dismiss: (id: string) => void
+  push: (kind: ToastKind, message: string) => void
+  dismiss: (id: number) => void
 }
 
-let nextId = 0
+let nextId = 1
 
 export const useToastStore = create<ToastState>((set) => ({
   toasts: [],
-  add: (message, type) => {
-    const id = String(++nextId)
-    set((s) => ({ toasts: [...s.toasts, { id, message, type }] }))
-    setTimeout(() => {
-      set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }))
-    }, 3500)
+  push: (kind, message) => {
+    const id = nextId++
+    set((s) => ({ toasts: [...s.toasts, { id, kind, message }] }))
+    // Errors stay until dismissed; they usually carry text worth reading.
+    if (kind !== 'error') {
+      setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), 4000)
+    }
   },
   dismiss: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }))
 }))
 
-export const toast = {
-  success: (message: string): void => useToastStore.getState().add(message, 'success'),
-  error: (message: string): void => useToastStore.getState().add(message, 'error'),
-  info: (message: string): void => useToastStore.getState().add(message, 'info')
+/** Shorthand for the common `catch` in an async handler. */
+export function toastError(err: unknown): void {
+  useToastStore.getState().push('error', err instanceof Error ? err.message : String(err))
 }

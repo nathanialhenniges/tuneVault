@@ -1,626 +1,205 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+@import '@fontsource-variable/bricolage-grotesque';
+@import '@fontsource-variable/hanken-grotesk';
 
-@custom-variant dark (&:where(.dark, .dark *));
-
+/*
+ * TuneVault — "instrument panel".
+ *
+ * The app is a device you load, so it is dressed as one: a quiet chassis,
+ * hairline rules, tabular numerals, and a single signal colour lifted straight
+ * out of the wolf mark (#1e96d2). Nothing is decorated that is not reporting
+ * something.
+ *
+ * Both appearances ship, because following the system appearance is part of
+ * feeling native — the OS drives it through `prefers-color-scheme` with no
+ * JavaScript involved. `--color-ink` is the text laid on top of a filled
+ * control, and it flips: dark ink on the cyan in dark mode, white on the
+ * deeper blue in light mode. That is what keeps filled buttons legible in both.
+ *
+ * Measured contrast (AA needs 4.5:1 for text, 3:1 for control boundaries):
+ *
+ *              DARK                         LIGHT
+ *   text       17.5:1 on bg                 16.8:1 on bg
+ *   muted       7.3:1 / 6.4:1                5.4:1 / 5.2:1
+ *   accent      7.2:1 as text on bg          5.2:1 as text on bg
+ *   ink on accent 7.0:1                      5.5:1
+ *   danger      6.5:1                        5.3:1
+ *   control     3.4:1                        3.2:1
+ * 2.x shipped muted text at 4.42:1 and a primary button at 2.8:1. Both failed.
+ */
 @theme {
-  /* Glowing orange accent */
-  --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
-  --color-accent-glow: var(--accent-glow);
+  --color-bg: #080b12;
+  --color-surface: #0e131c;
+  --color-surface-2: #151b26;
+  /* Decorative hairline. Never the only thing separating two regions. */
+  --color-hairline: #212936;
+  /* Boundary of an interactive control — held above 3:1 against the ground. */
+  --color-control: #566780;
 
-  /* Surfaces */
-  --color-bg-base: var(--bg-base);
-  --color-bg-surface: var(--bg-surface);
-  --color-bg-surface-hover: var(--bg-surface-hover);
-  --color-bg-raised: var(--bg-raised);
-  --color-bg-inset: var(--bg-inset);
+  --color-text: #eef2f7;
+  --color-text-muted: #949eae;
+  /* Text laid on an accent/danger/warn/ok fill. */
+  --color-ink: #061019;
 
-  /* Interactive surfaces */
-  --color-glass-hover: var(--glass-hover);
-  --color-glass-active: var(--glass-active);
-  --color-glass-input-bg: var(--glass-input-bg);
+  --color-accent: #22a6e6;
+  --color-accent-hover: #3fb4ee;
+  --color-accent-active: #1c93cd;
 
-  /* Borders */
-  --color-border-default: var(--border-default);
-  --color-border-subtle: var(--border-subtle);
+  --color-danger: #ff5a63;
+  --color-danger-hover: #ff7078;
+  --color-warn: #f0a63c;
+  --color-ok: #3ecf8e;
 
-  /* Text */
-  --color-text-primary: var(--text-primary);
-  --color-text-secondary: var(--text-secondary);
-  --color-text-muted: var(--text-muted);
-  --color-text-inverted: var(--text-inverted);
+  --color-tick: #232e3f;
+
+  --font-display: 'Bricolage Grotesque Variable', 'Hanken Grotesk Variable', sans-serif;
+  --font-sans: 'Hanken Grotesk Variable', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* ── Focus visible ring for all interactive elements ──── */
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible,
-[role="button"]:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 4px;
+@media (prefers-color-scheme: light) {
+  :root {
+    --color-bg: #f6f7f9;
+    --color-surface: #ffffff;
+    --color-surface-2: #eef1f5;
+    --color-hairline: #dfe4ea;
+    --color-control: #7f8b9b;
+
+    --color-text: #111721;
+    --color-text-muted: #5b6675;
+    --color-ink: #ffffff;
+
+    --color-accent: #0f6f9e;
+    --color-accent-hover: #0b6089;
+    --color-accent-active: #0a5878;
+
+    --color-danger: #c22b38;
+    --color-danger-hover: #a92330;
+    --color-warn: #95560a;
+    --color-ok: #12734b;
+
+    --color-tick: #dde3ea;
+  }
 }
 
-/* ── Native cursor: desktop controls use the arrow; the hand pointer is for
-   real (external) hyperlinks only. The web reflex of cursor:pointer on every
-   button is one of the loudest "this is a website" tells. ──── */
-button,
-[role="button"],
-select,
-label,
-summary,
-a:not([href^="http"]) {
-  cursor: default;
-}
-
-/* ── Light theme (default) ───────────────────────────────── */
-:root {
-  --accent: #ea580c;
-  --accent-hover: #c2410c;
-  --accent-glow: rgba(234, 88, 12, 0.15);
-  --accent-rgb: 234, 88, 12;
-
-  --bg-base: #ffffff;
-  --bg-surface: #f4f4f5;
-  --bg-surface-hover: #e4e4e7;
-  --bg-raised: #ffffff;
-  --bg-inset: #e4e4e7;
-
-  --border-default: #d4d4d8;
-  --border-subtle: #e4e4e7;
-
-  --text-primary: #18181b;
-  --text-secondary: #52525b;
-  --text-muted: #71717a; /* AA (~4.8:1) on white — used for real secondary info */
-  --text-inverted: #ffffff;
-
-  --scrollbar-thumb: #d4d4d8;
-  --scrollbar-thumb-hover: #a1a1aa;
-
-  /* Glass tokens — light */
-  --glass-sidebar-bg: rgba(255, 255, 255, 0.55);
-  --glass-player-bg: rgba(255, 255, 255, 0.6);
-  --glass-titlebar-bg: rgba(255, 255, 255, 0.45);
-  --glass-float-bg: rgba(255, 255, 255, 0.72);
-  --glass-modal-bg: rgba(255, 255, 255, 0.78);
-  --glass-blur-chrome: 18px;
-  --glass-blur-float: 24px;
-  --glass-blur-modal: 28px;
-  --glass-border-light: rgba(255, 255, 255, 0.7);
-  --glass-border-edge: rgba(0, 0, 0, 0.06);
-  --glass-shimmer: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 60%);
-
-  /* Shadow scale */
-  --shadow-glass-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
-  --shadow-glass-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
-  --shadow-glass-lg: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-glass-xl: 0 16px 48px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.06);
-
-  /* Radius scale */
-  --radius-panel: 10px;
-  --radius-card: 8px;
-  --radius-item: 6px;
-
-  /* Interactive surface tokens */
-  --glass-hover: rgba(0, 0, 0, 0.04);
-  --glass-active: rgba(0, 0, 0, 0.07);
-  --glass-input-bg: rgba(0, 0, 0, 0.03);
-
-  /* Seek track */
-  --seek-track-bg: rgba(0, 0, 0, 0.08);
-  --seek-track-hover: rgba(0, 0, 0, 0.12);
-
-  /* Display font — characterful grotesque for the wordmark + page titles */
-  --font-display: 'Bricolage Grotesque Variable', 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
-  /* Body/UI font — clean variable grotesque, self-hosted */
-  --font-body: 'Hanken Grotesk Variable', 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-
-/* ── Obsidian dark theme ─────────────────────────────────── */
-.dark {
-  --accent: #f97316;
-  --accent-hover: #fb923c;
-  --accent-glow: rgba(249, 115, 22, 0.15);
-  --accent-rgb: 249, 115, 22;
-
-  --bg-base: #09090b;
-  --bg-surface: #0f0f12;
-  --bg-surface-hover: #1a1a1f;
-  --bg-raised: #141418;
-  --bg-inset: #0a0a0d;
-
-  --border-default: #23232a;
-  --border-subtle: #1a1a1f;
-
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
-  --text-muted: #86868f; /* AA (~5.0:1) on dark — used for real secondary info */
-  --text-inverted: #09090b;
-
-  --scrollbar-thumb: #23232a;
-  --scrollbar-thumb-hover: #3f3f46;
-
-  /* Glass tokens — dark */
-  --glass-sidebar-bg: rgba(15, 15, 18, 0.55);
-  --glass-player-bg: rgba(15, 15, 18, 0.6);
-  --glass-titlebar-bg: rgba(15, 15, 18, 0.45);
-  --glass-float-bg: rgba(20, 20, 24, 0.72);
-  --glass-modal-bg: rgba(24, 24, 30, 0.82);
-  --glass-blur-chrome: 18px;
-  --glass-blur-float: 24px;
-  --glass-blur-modal: 32px;
-  --glass-border-light: rgba(255, 255, 255, 0.08);
-  --glass-border-edge: rgba(255, 255, 255, 0.06);
-  --glass-shimmer: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0) 60%);
-
-  /* Shadow scale — dark */
-  --shadow-glass-sm: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.15);
-  --shadow-glass-md: 0 4px 12px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
-  --shadow-glass-lg: 0 8px 24px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
-  --shadow-glass-xl: 0 16px 48px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3);
-
-  --radius-panel: 10px;
-  --radius-card: 8px;
-  --radius-item: 6px;
-
-  /* Interactive surface tokens — dark */
-  --glass-hover: rgba(255, 255, 255, 0.05);
-  --glass-active: rgba(255, 255, 255, 0.08);
-  --glass-input-bg: rgba(255, 255, 255, 0.04);
-
-  /* Seek track — dark */
-  --seek-track-bg: rgba(255, 255, 255, 0.06);
-  --seek-track-hover: rgba(255, 255, 255, 0.1);
-
-  --font-display: 'Bricolage Grotesque Variable', 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
-}
-
-/* ── Accent color ── orange is the default; blue is opt-in via Settings.
-   Layers over light/dark so each accent gets a tuned light + dark value.
-   Everything in the app reads var(--accent*), so switching here is app-wide. */
-[data-accent="blue"] {
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
-  --accent-glow: rgba(37, 99, 235, 0.15);
-  --accent-rgb: 37, 99, 235;
-}
-.dark[data-accent="blue"] {
-  --accent: #3b82f6;
-  --accent-hover: #60a5fa;
-  --accent-glow: rgba(59, 130, 246, 0.15);
-  --accent-rgb: 59, 130, 246;
+html,
+body,
+#root {
+  height: 100%;
 }
 
 body {
   margin: 0;
-  /* Self-hosted Hanken Grotesk for the UI, with the platform UI font as the
-     fallback while the bundled woff2 loads. */
-  font-family: var(--font-body);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-synthesis-weight: none;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-  user-select: none;
-  overflow: hidden;
-  background-color: var(--bg-base);
-  color: var(--text-primary);
-  transition: background-color 0.2s, color 0.2s;
 }
 
-/* macOS: opaque backing. Window-level vibrancy was dropped (it only ever showed
-   as a desktop-bleed hairline at the frame edge), so the body stays fully solid
-   for crisp text contrast. In-app depth comes from the .glass-* backdrop blurs. */
-.is-mac body {
-  background-color: var(--bg-base);
-}
-.is-mac body::before {
-  opacity: 0.6;
-}
-
-/* Windows 11 Mica: the window backing is translucent so the desktop tint shows
-   through the chrome. Keep the content plane mostly opaque so text stays
-   readable (same trade-off as the macOS vibrancy backing). */
-.is-win body {
-  background-color: color-mix(in srgb, var(--bg-base) 88%, transparent);
-}
-
-/* Ambient tint — a faint STATIC accent wash so the backdrop-blur chrome has
-   something to pick up, without the battery/compositor cost of an animated,
-   larger-than-viewport layer (a desktop app pays no such tax for decoration).
-   Depth comes from layered surfaces + hairline borders + shadows, not motion. */
+/*
+ * Faint weave over the chassis: hairline diagonals at ~1.5% alpha plus a cool
+ * wash from the top. Enough to stop large flat areas reading as dead paint,
+ * not enough to register as a pattern.
+ */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background:
-    radial-gradient(ellipse 55% 50% at 12% 92%, rgba(var(--accent-rgb), 0.05) 0%, transparent 62%),
-    radial-gradient(ellipse 50% 45% at 88% 6%, rgba(var(--accent-rgb), 0.035) 0%, transparent 64%);
-  transition: background 0.3s ease;
+  background-image:
+    repeating-linear-gradient(45deg, rgb(from var(--color-text) r g b / 0.015) 0 1px, transparent 1px 4px),
+    radial-gradient(90% 55% at 50% -20%, rgb(from var(--color-accent) r g b / 0.04), transparent 65%);
 }
 
-/* ── Glass utility classes ───────────────────────────────── */
-.glass-chrome {
-  background: var(--glass-sidebar-bg);
-  backdrop-filter: blur(var(--glass-blur-chrome)) saturate(180%);
-  -webkit-backdrop-filter: blur(var(--glass-blur-chrome)) saturate(180%);
-  box-shadow: var(--shadow-glass-sm);
+#root {
+  position: relative;
+  z-index: 1;
 }
 
-.glass-chrome::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: var(--glass-shimmer);
-  border-radius: inherit;
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
-.glass-float {
-  background: var(--glass-float-bg);
-  backdrop-filter: blur(var(--glass-blur-float)) saturate(180%);
-  -webkit-backdrop-filter: blur(var(--glass-blur-float)) saturate(180%);
-  box-shadow: var(--shadow-glass-lg);
+/* Sizes, counts and percentages must not jitter as they tick. */
+.tabular,
+input[type='number'] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
 }
 
-.glass-modal {
-  background: var(--glass-modal-bg);
-  backdrop-filter: blur(var(--glass-blur-modal)) saturate(180%);
-  -webkit-backdrop-filter: blur(var(--glass-blur-modal)) saturate(180%);
-  box-shadow: var(--shadow-glass-xl);
-  border: 1px solid var(--glass-border-light);
+/*
+ * The window has no title bar (`titleBarStyle: 'hiddenInset'`), so this strip
+ * is what the user drags. Drag regions swallow all pointer events, so every
+ * control that sits inside one must opt back out with `.no-drag`. Regions are
+ * rectangular — a rounded child still punches a rectangle.
+ */
+.drag-region {
+  -webkit-app-region: drag;
+  app-region: drag;
+  user-select: none;
 }
 
-/* Glass borders */
-.glass-border-sidebar {
-  border-right: 1px solid var(--glass-border-edge);
-  box-shadow: var(--shadow-glass-sm), inset -1px 0 0 var(--glass-border-light);
+.no-drag,
+.drag-region button,
+.drag-region a,
+.drag-region input,
+.drag-region [role='button'] {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 
-.glass-border-player {
-  border-top: 1px solid var(--glass-border-edge);
-  box-shadow: var(--shadow-glass-md), inset 0 1px 0 var(--glass-border-light);
+/* Checkboxes, radios and range inputs pick up the system accent for free, and
+   it tracks the user's setting live — better than reading it through an API
+   that fires no change event on macOS. */
+:root {
+  accent-color: auto;
 }
 
-.glass-border-float {
-  border: 1px solid var(--glass-border-edge);
-  box-shadow: var(--shadow-glass-lg), inset 0 1px 0 var(--glass-border-light);
+/* Never `outline: none`. `:focus-visible` already suppresses the ring for
+   mouse clicks and keeps it for the keyboard, which is the native behaviour. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 
-/* Respect the system "Reduce transparency" setting — drop the blur and go solid
-   so the material never costs legibility for users who opted out. Placed AFTER
-   the .glass-* base rules so it wins on source order. The [style] backstop with
-   !important also neutralizes the handful of inline backdrop-filter surfaces
-   (sticky headers, inputs, dropdowns, modal overlay) that don't use these classes. */
-@media (prefers-reduced-transparency: reduce) {
-  .glass-chrome,
-  .glass-float,
-  .glass-modal {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    background: var(--bg-raised);
-  }
-  [style*="backdrop-filter"],
-  [style*="backdropFilter"] {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-  body::before { display: none; }
+::selection {
+  background: var(--color-accent);
+  color: var(--color-ink);
 }
 
-/* Seek / volume track styling */
-.seek-track {
-  background: var(--seek-track-bg);
-  transition: background 0.15s;
-}
-.seek-track:hover {
-  background: var(--seek-track-hover);
-}
+/* Scrollbars are deliberately left alone. macOS renders overlay scrollbars that
+   honour System Settings > Appearance > "Show scroll bars"; restyling them is
+   one of the loudest tells that a desktop app is a web page. */
 
-/* Glass reveal animation for floating panels */
-@keyframes glassReveal {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.glass-reveal {
-  animation: glassReveal 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-slide-up {
-  animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Right inspector drawer slide-in */
-@keyframes drawerReveal {
-  from {
-    opacity: 0;
-    transform: translateX(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-.drawer-reveal {
-  animation: drawerReveal 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Route transitions */
-@keyframes routeEnter {
+/* One orchestrated reveal on mount, staggered by index through --i. */
+@keyframes rise {
   from {
     opacity: 0;
     transform: translateY(6px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
-@keyframes routeExit {
-  from {
-    opacity: 1;
-    transform: translateY(0);
+.rise {
+  animation: rise 320ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
   }
-  to {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-}
-
-/* No `forwards`: once the enter finishes, the element reverts to its base
-   (opacity 1, transform none) instead of holding translateY(0). A held
-   transform would make this the containing block for position:fixed children
-   (context menus, modal overlays), offsetting them from the viewport. */
-.route-enter {
-  animation: routeEnter 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.route-exit {
-  animation: routeExit 0.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Markdown prose styles */
-.markdown-prose {
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  line-height: 1.6;
-}
-
-.markdown-prose h1 {
-  color: var(--text-primary);
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-}
-
-.markdown-prose h2 {
-  color: var(--text-primary);
-  font-size: 1rem;
-  font-weight: 600;
-  margin-top: 1.25rem;
-  margin-bottom: 0.375rem;
-}
-
-.markdown-prose h3 {
-  color: var(--text-primary);
-  font-size: 0.875rem;
-  font-weight: 600;
-  margin-top: 1rem;
-  margin-bottom: 0.25rem;
-}
-
-.markdown-prose p {
-  margin-bottom: 0.5rem;
-}
-
-.markdown-prose strong {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.markdown-prose a {
-  color: var(--accent);
-  text-decoration: none;
-}
-
-.markdown-prose a:hover {
-  color: var(--accent-hover);
-  text-decoration: underline;
-}
-
-.markdown-prose hr {
-  border: none;
-  border-top: 1px solid var(--glass-border-edge);
-  margin: 0.75rem 0;
-}
-
-.markdown-prose ul,
-.markdown-prose ol {
-  padding-left: 1.25rem;
-  margin-bottom: 0.5rem;
-}
-
-.markdown-prose li {
-  margin-bottom: 0.125rem;
-}
-
-.markdown-prose table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.75rem;
-  margin: 0.75rem 0;
-}
-
-.markdown-prose thead th {
-  color: var(--text-primary);
-  font-weight: 600;
-  text-align: left;
-  padding: 0.5rem 0.625rem;
-  border-bottom: 1px solid var(--glass-border-edge);
-  white-space: nowrap;
-}
-
-.markdown-prose tbody td {
-  padding: 0.375rem 0.625rem;
-  border-bottom: 1px solid var(--glass-border-edge);
-  vertical-align: top;
-}
-
-.markdown-prose tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.markdown-prose tbody tr:hover {
-  background: var(--glass-hover);
-}
-
-.markdown-prose code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.8em;
-  background: var(--glass-hover);
-  padding: 0.125rem 0.375rem;
-  border-radius: 4px;
-}
-
-.markdown-prose pre {
-  background: var(--glass-hover);
-  border-radius: 8px;
-  padding: 0.75rem;
-  overflow-x: auto;
-  margin: 0.5rem 0;
-}
-
-.markdown-prose pre code {
-  background: none;
-  padding: 0;
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
-}
-
-/* Drag region for title bar */
-.drag-region {
-  -webkit-app-region: drag;
-}
-
-.no-drag {
-  -webkit-app-region: no-drag;
-}
-
-/* Display font utility — the editorial serif flourish, used only on the wordmark */
-.font-display {
-  font-family: var(--font-display);
-  font-optical-sizing: auto;
-  letter-spacing: -0.01em;
-}
-
-.text-balance {
-  text-wrap: balance;
-}
-
-/* Button press micro-interaction */
-.btn-press:active {
-  transform: scale(0.95);
-  transition: transform 0.07s ease;
-}
-
-/* ── macOS 26 accent button ── glossy fill + accent glow, follows the picker */
-.btn-accent {
-  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-hover) 100%);
-  color: var(--text-inverted);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 2px 8px rgba(var(--accent-rgb), 0.35);
-  transition: filter 0.15s ease, transform 0.07s ease, box-shadow 0.15s ease;
-}
-.btn-accent:hover:not(:disabled) {
-  filter: brightness(1.06);
-}
-.btn-accent:active:not(:disabled) {
-  transform: scale(0.97);
-}
-.btn-accent:disabled {
-  background: var(--bg-inset);
-  color: var(--text-muted);
-  box-shadow: none;
-  cursor: not-allowed;
-}
-
-/* Download shimmer animation */
-@keyframes downloadShimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-.download-shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.3) 50%,
-    transparent 100%
-  );
-  background-size: 200% 100%;
-  animation: downloadShimmer 1.5s ease-in-out infinite;
-}
-
-/* Range input accent */
-input[type="range"] {
-  accent-color: var(--accent);
-}
-
-/* Equalizer spinner */
-@keyframes equalizerPulse {
-  0%, 100% { transform: scaleY(0.3); }
-  50% { transform: scaleY(1); }
-}
-@keyframes textPulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-/* OIIA OIIA - full spin with wobbly bounce like the cat meme */
-@keyframes wolfOiia {
-  0%   { transform: rotate(0deg) scale(1); }
-  15%  { transform: rotate(90deg) scale(1.1, 0.9); }
-  30%  { transform: rotate(180deg) scale(0.9, 1.1); }
-  45%  { transform: rotate(270deg) scale(1.1, 0.9); }
-  55%  { transform: rotate(360deg) scale(1); }
-  60%  { transform: rotate(360deg) scale(1.05); }
-  65%  { transform: rotate(340deg) scale(1.1, 0.9); }
-  75%  { transform: rotate(380deg) scale(0.9, 1.1); }
-  85%  { transform: rotate(350deg) scale(1.05); }
-  100% { transform: rotate(360deg) scale(1); }
 }

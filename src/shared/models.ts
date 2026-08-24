@@ -1,137 +1,136 @@
+/** Where a playlist URL came from. */
+export type Provider = 'youtube' | 'apple' | 'spotify'
+
+/** Where the actual audio stream is pulled from. */
+export type TrackSource = 'youtube' | 'soundcloud'
+
+export type AudioFormat = 'mp3' | 'flac' | 'opus'
+
+/**
+ * A track after resolution: it always has a `sourceUrl` yt-dlp can download.
+ * Spotify/Apple only give us title+artist, so those go through a YouTube search
+ * before they become a ResolvedTrack.
+ */
 export interface Track {
+  /** Stable id — the YouTube video id, or `${provider}:${index}` if unresolved. */
   id: string
-  videoId: string
+  /** 1-based position in the playlist; drives the "NN - " filename prefix. */
+  position: number
   title: string
   artist: string
-  duration: number // seconds
-  thumbnailUrl: string
-  playlistId: string
-  playlistTitle: string
-  position: number
-  filePath?: string
-  format?: AudioFormat
-  downloadedAt?: string
-  releaseDate?: string
-  bitrate?: number
-  url?: string
-  description?: string
-  /** Full source URL to download from (YouTube or SoundCloud). Falls back to a YouTube watch URL built from videoId. */
-  sourceUrl?: string
-  source?: 'youtube' | 'soundcloud'
-  /** Looked-up music genre (e.g. from MusicBrainz). Shown in the library + tagged on export. */
-  genre?: string
-  /** sha1 of the source file's bytes — used to detect re-imports of the same audio. */
-  fileHash?: string
-}
-
-/** What to do with imported files whose content already exists in the library. */
-export type ImportConflictDecision = 'keep' | 'overwrite' | 'skip'
-
-export interface ImportResult {
-  imported: number
-  playlists: number
-  /** Set when dupes were found and no decision was given yet — renderer must prompt. */
-  needsDecision?: boolean
-  /** Names of dropped files that already exist (by content hash). */
-  conflicts?: string[]
+  album: string
+  /** Seconds. 0 when the provider did not report one. */
+  duration: number
+  sourceUrl: string
+  source: TrackSource
+  thumbnail?: string
 }
 
 export interface Playlist {
   id: string
   title: string
-  channelTitle: string
-  thumbnailUrl: string
+  /** The URL the user pasted. */
+  url: string
+  provider: Provider
+  uploader?: string
+  thumbnail?: string
   tracks: Track[]
-  fetchedAt: string
 }
 
-export type AudioFormat = 'flac' | 'opus' | 'mp3'
-export type DateFormat = 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'DD Mon YYYY'
-export type ReleaseDateSource = 'youtube' | 'musicbrainz'
-export type AccentColor = 'orange' | 'blue'
-
-export interface DownloadRequest {
-  playlist: Playlist
-  format: AudioFormat
-  outputDir: string
-  concurrency: number
-  forceRedownload?: boolean
-  dateFormat?: DateFormat
-  releaseDateSource?: ReleaseDateSource
-}
-
-export interface DownloadProgress {
-  trackId: string
-  videoId: string
-  percent: number
-  speed: string
-  eta: string
-  status: 'queued' | 'downloading' | 'converting' | 'tagging' | 'done' | 'skipped' | 'error' | 'rate-limited'
-  error?: string
-}
-
-export interface LibraryData {
-  playlists: Playlist[]
-  version: number
-}
-
-export interface SyncConfig {
-  enabled: boolean
-  intervalHours: 1 | 3 | 6 | 12 | 24
-  syncedPlaylistIds: string[]
-  lastSyncTime: string | null
-}
-
-export interface SyncResult {
-  playlistId: string
-  playlistTitle: string
-  newTracks: Track[]
-  checkedAt: string
-}
-
-/** A managed media device (e.g. an iPod). Its folder lives under TuneVault/Devices/. */
+/** A named destination folder with a hard size budget. */
 export interface Device {
   id: string
+  /** Display name, e.g. "Nathanial's iPod". */
   name: string
+  /** Absolute path. Always inside `musicRoot`. */
   dir: string
-  /** Playlists assigned to this device — synced into its folder. */
-  playlistIds: string[]
+  /** Hard cap in bytes. Downloads that would exceed it are refused. */
+  capacityBytes: number
+  createdAt: string
 }
 
-/** Row spacing for the track lists. */
-export type TrackDensity = 'comfortable' | 'compact'
+export interface DeviceUsage {
+  deviceId: string
+  usedBytes: number
+  capacityBytes: number
+  trackCount: number
+}
+
+/** Metadata read back out of a file's own ID3 tags. */
+export interface FileTags {
+  title?: string
+  artist?: string
+  album?: string
+  genre?: string
+  year?: string
+  trackNumber?: number
+  hasArtwork: boolean
+}
+
+/** One audio file sitting on a device. */
+export interface DeviceFile {
+  path: string
+  /** Filename, no directory part. */
+  name: string
+  /** Folder relative to the device root; '' for a file in the root. */
+  folder: string
+  size: number
+  /** Absent when the file carries no readable ID3 tag. */
+  tags?: FileTags
+}
+
+export type DownloadStatus =
+  | 'queued'
+  | 'downloading'
+  | 'tagging'
+  | 'complete'
+  | 'error'
+  | 'cancelled'
+  | 'skipped'
+  | 'rate-limited'
+
+export interface DownloadProgress {
+  jobId: string
+  trackId: string
+  status: DownloadStatus
+  /** 0-100. */
+  percent: number
+  /** Human-readable detail: speed, ETA, or an error message. */
+  detail?: string
+}
+
+/** What the renderer sends to start a download run. */
+export interface DownloadRequest {
+  deviceId: string
+  playlist: Playlist
+  /** Subset of `playlist.tracks` ids the user actually wants. */
+  trackIds: string[]
+  forceRedownload?: boolean
+}
 
 export interface AppSettings {
-  musicDir: string
-  /** Managed media devices. Each syncs its assigned playlists into its folder. */
+  /** Root folder that holds one subfolder per device. */
+  musicRoot: string
   devices: Device[]
   audioFormat: AudioFormat
+  /** Parallel yt-dlp processes, 1-8. */
   concurrency: number
-  theme: 'dark' | 'light' | 'system'
-  accent: AccentColor
-  trackDensity: TrackDensity
-  dateFormat: DateFormat
-  releaseDateSource: ReleaseDateSource
-  sync: SyncConfig
+  /** Look up genre + cover art from MusicBrainz/iTunes while downloading. */
+  metadataEnrichment: boolean
+  /**
+   * Allow the same song to exist more than once on one device. Off by default:
+   * a track already on the device is skipped even when a second playlist wants
+   * it, so shared songs are not downloaded and stored twice.
+   */
+  allowDuplicates: boolean
+  disclaimerAccepted: boolean
 }
 
-export const DEFAULT_SETTINGS: AppSettings = {
-  musicDir: '',
+export const DEFAULT_SETTINGS: Omit<AppSettings, 'musicRoot'> = {
   devices: [],
   audioFormat: 'mp3',
-  concurrency: 2,
-  theme: 'dark',
-  accent: 'orange',
-  trackDensity: 'comfortable',
-  dateFormat: 'MM/DD/YYYY',
-  releaseDateSource: 'youtube',
-  sync: { enabled: false, intervalHours: 6, syncedPlaylistIds: [], lastSyncTime: null }
-}
-
-export interface UpdateStatus {
-  status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
-  version?: string
-  releaseNotes?: string
-  error?: string
-  progress?: number
+  concurrency: 3,
+  metadataEnrichment: true,
+  allowDuplicates: false,
+  disclaimerAccepted: false
 }

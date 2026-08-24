@@ -1,232 +1,120 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { IpcChannels } from '../shared/ipc-channels'
-import type { AppSettings, Device, DownloadRequest, DownloadProgress, LibraryData, Playlist, SyncConfig, SyncResult, UpdateStatus } from '../shared/models'
+import { IPC } from '../shared/ipc-channels'
+import type {
+  AppSettings,
+  Device,
+  DeviceFile,
+  DeviceUsage,
+  DownloadProgress,
+  DownloadRequest,
+  Playlist,
+  Track
+} from '../shared/models'
 
-const appVersion: string = (() => {
-  try {
-    return require('../../package.json').version
-  } catch {
-    return 'unknown'
-  }
-})()
+export type { DeviceFile } from '../shared/models'
 
-/** Per-track patch pushed during a metadata fetch so the UI can live-update. */
-export interface TrackMetaPatch {
-  trackId: string
-  genre?: string
-  artist?: string
-  thumbnailUrl?: string
+/** Subscribe helper — returns an unsubscribe function for use in useEffect. */
+function on<T>(channel: string, handler: (payload: T) => void): () => void {
+  const listener = (_e: Electron.IpcRendererEvent, payload: T): void => handler(payload)
+  ipcRenderer.on(channel, listener)
+  return () => ipcRenderer.removeListener(channel, listener)
 }
-export interface GenreProgress {
-  current: number
-  total: number
-  label?: string
-  patch?: TrackMetaPatch
+
+export interface DownloadSummary {
+  runId: string
+  completed: number
+  skipped: number
+  failed: number
+  cancelled: boolean
+  errors: { title: string; message: string }[]
+}
+
+export interface Preflight {
+  usedBytes: number
+  capacityBytes: number
+  freeBytes: number
+  incomingBytes: number
+  shortfallBytes: number
+  fits: boolean
+}
+
+export interface ImportResult {
+  copied: number
+  skipped: number
+  rejected: number
+  refused: number
+  errors: { name: string; message: string }[]
 }
 
 const api = {
-  getVersion: (): string => appVersion,
   platform: process.platform,
 
-  // Playlist
-  fetchPlaylist: (url: string): Promise<Playlist> =>
-    ipcRenderer.invoke(IpcChannels.PLAYLIST_FETCH, url),
+  resolvePlaylist: (url: string): Promise<Playlist> =>
+    ipcRenderer.invoke(IPC.PLAYLIST_RESOLVE, url),
 
-  // Download
-  startDownload: (request: DownloadRequest): Promise<{ started: number }> =>
-    ipcRenderer.invoke(IpcChannels.DOWNLOAD_START, request),
-  cancelDownload: (trackId: string): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.DOWNLOAD_CANCEL, trackId),
-  cancelAllDownloads: (): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.DOWNLOAD_CANCEL_ALL),
-  onDownloadProgress: (callback: (progress: DownloadProgress) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, progress: DownloadProgress): void => callback(progress)
-    ipcRenderer.on(IpcChannels.DOWNLOAD_PROGRESS, handler)
-    return () => ipcRenderer.removeListener(IpcChannels.DOWNLOAD_PROGRESS, handler)
-  },
-  onDownloadComplete: (callback: (data: { trackId: string; filePath: string }) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: { trackId: string; filePath: string }): void => callback(data)
-    ipcRenderer.on(IpcChannels.DOWNLOAD_COMPLETE, handler)
-    return () => ipcRenderer.removeListener(IpcChannels.DOWNLOAD_COMPLETE, handler)
-  },
-  onDownloadError: (callback: (data: { trackId: string; error: string }) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, data: { trackId: string; error: string }): void => callback(data)
-    ipcRenderer.on(IpcChannels.DOWNLOAD_ERROR, handler)
-    return () => ipcRenderer.removeListener(IpcChannels.DOWNLOAD_ERROR, handler)
+  devices: {
+    list: (): Promise<Device[]> => ipcRenderer.invoke(IPC.DEVICE_LIST),
+    create: (name: string, capacityBytes: number): Promise<Device> =>
+      ipcRenderer.invoke(IPC.DEVICE_CREATE, name, capacityBytes),
+    update: (id: string, patch: { name?: string; capacityBytes?: number }): Promise<Device> =>
+      ipcRenderer.invoke(IPC.DEVICE_UPDATE, id, patch),
+    /** Shows a native confirmation sheet; resolves false if the user cancels. */
+    remove: (id: string): Promise<boolean> => ipcRenderer.invoke(IPC.DEVICE_DELETE, id),
+    usage: (id: string): Promise<DeviceUsage> => ipcRenderer.invoke(IPC.DEVICE_USAGE, id),
+    openFolder: (id: string): Promise<void> => ipcRenderer.invoke(IPC.DEVICE_OPEN_FOLDER, id),
+    tracks: (id: string): Promise<DeviceFile[]> => ipcRenderer.invoke(IPC.DEVICE_TRACKS, id),
+    /** Moves the files to the Trash. Confirms natively when deleting several. */
+    deleteTracks: (id: string, paths: string[]): Promise<number> =>
+      ipcRenderer.invoke(IPC.DEVICE_DELETE_TRACKS, id, paths),
+    revealTrack: (id: string, path: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.DEVICE_REVEAL_TRACK, id, path),
+    importFiles: (id: string, paths: string[]): Promise<ImportResult> =>
+      ipcRenderer.invoke(IPC.DEVICE_IMPORT, id, paths),
+    pickAudioFiles: (): Promise<string[]> => ipcRenderer.invoke(IPC.DEVICE_PICK_AUDIO)
   },
 
-  // Library
-  getLibrary: (): Promise<LibraryData> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_GET),
-  getTrackPath: (trackId: string): Promise<string | null> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_GET_TRACK_PATH, trackId),
-  verifyLibrary: (): Promise<LibraryData> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_VERIFY),
-  deleteTracks: (trackIds: string[]): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_DELETE_TRACKS, trackIds),
-  moveTracks: (trackIds: string[], targetPlaylistId: string): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_MOVE_TRACKS, trackIds, targetPlaylistId),
-  renamePlaylist: (playlistId: string, newTitle: string): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_RENAME_PLAYLIST, playlistId, newTitle),
-  setMetadata: (
-    trackIds: string[],
-    patch: { title?: string; artist?: string; genre?: string }
-  ): Promise<{ updated: number; tagged: number }> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_SET_METADATA, trackIds, patch),
-  deleteAllLibrary: (): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_DELETE_ALL),
-  openFolder: (filePath: string): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_OPEN_FOLDER, filePath),
-  getPlaylistInfoPath: (playlistId: string): Promise<string | null> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_GET_PLAYLIST_INFO_PATH, playlistId),
-  readPlaylistInfo: (playlistId: string): Promise<string | null> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_READ_PLAYLIST_INFO, playlistId),
-  openFile: (filePath: string): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_OPEN_FILE, filePath),
-  fetchGenres: (
-    playlistIds: string[]
-  ): Promise<{ updated: number; genres: number; artwork: number; tracks: number }> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_FETCH_GENRES, playlistIds),
-  onFetchGenresProgress: (
-    cb: (p: GenreProgress) => void
-  ): (() => void) => {
-    const handler = (_e: unknown, p: GenreProgress): void => cb(p)
-    ipcRenderer.on(IpcChannels.LIBRARY_FETCH_GENRES_PROGRESS, handler)
-    return () => ipcRenderer.removeListener(IpcChannels.LIBRARY_FETCH_GENRES_PROGRESS, handler)
-  },
-  rebuildMetadata: (
-    playlistIds: string[]
-  ): Promise<{ playlists: number; tracks: number; tagged: number; error?: string }> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_REBUILD_METADATA, playlistIds),
-  onRebuildProgress: (
-    cb: (p: { current: number; total: number; label?: string }) => void
-  ): (() => void) => {
-    const handler = (_e: unknown, p: { current: number; total: number; label?: string }): void => cb(p)
-    ipcRenderer.on(IpcChannels.LIBRARY_REBUILD_PROGRESS, handler)
-    return () => ipcRenderer.removeListener(IpcChannels.LIBRARY_REBUILD_PROGRESS, handler)
-  },
-  // Resolve a dropped File to its absolute path (Electron-only API).
+  /**
+   * Resolve a dropped File to its absolute path. Electron removed `File.path`
+   * in v32; `webUtils.getPathForFile` is the supported replacement and must be
+   * called from preload, where `webUtils` exists.
+   */
   pathForFile: (file: File): string => webUtils.getPathForFile(file),
-  importPaths: (
-    paths: string[],
-    decision?: 'keep' | 'overwrite' | 'skip'
-  ): Promise<{ imported: number; playlists: number; needsDecision?: boolean; conflicts?: string[] }> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_IMPORT, paths, decision),
-  createDeviceFolder: (name: string): Promise<Device> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_CREATE_DEVICE, name),
-  deleteDeviceFolder: (dir: string): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_DELETE_DEVICE, dir),
-  syncDevice: (
-    device: Device,
-    opts?: { reveal?: boolean }
-  ): Promise<{
-    playlists: number
-    copied: number
-    total: number
-    genreTagged: number
-    removed: number
-    skippedMoved: number
-  }> => ipcRenderer.invoke(IpcChannels.LIBRARY_SYNC_DEVICE, device, opts),
-  archiveDevice: (device: Device): Promise<{ moved: number }> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_DEVICE_ARCHIVE, device),
-  deviceStatus: (dir: string): Promise<{ live: number; moved: number }> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_DEVICE_STATUS, dir),
-  clearDevice: (device: Device, which: 'moved' | 'live' | 'all'): Promise<{ deleted: number }> =>
-    ipcRenderer.invoke(IpcChannels.LIBRARY_DEVICE_CLEAR, device, which),
-  onSyncDeviceProgress: (
-    cb: (p: { deviceId: string; current: number; total: number; label?: string }) => void
-  ): (() => void) => {
-    const handler = (
-      _e: unknown,
-      p: { deviceId: string; current: number; total: number; label?: string }
-    ): void => cb(p)
-    ipcRenderer.on(IpcChannels.LIBRARY_SYNC_DEVICE_PROGRESS, handler)
-    return () => ipcRenderer.removeListener(IpcChannels.LIBRARY_SYNC_DEVICE_PROGRESS, handler)
+
+  /**
+   * URL for the cover art embedded in a track. Served by the main process on
+   * demand, so listings never carry image bytes over IPC.
+   */
+  artworkUrl: (filePath: string): string => `tvart://art/${encodeURIComponent(filePath)}`,
+
+  /** Start a native drag of real files, so tracks can be dragged into Finder. */
+  startDrag: (paths: string[]): void => ipcRenderer.send(IPC.DRAG_OUT, paths),
+
+  /** Menu bar items that need the UI to do something. */
+  onMenu: (channel: string, handler: () => void): (() => void) => {
+    const listener = (): void => handler()
+    ipcRenderer.on(channel, listener)
+    return () => ipcRenderer.removeListener(channel, listener)
   },
 
-  // Player
-  getFileUrl: (filePath: string): Promise<string> =>
-    ipcRenderer.invoke(IpcChannels.PLAYER_GET_FILE_URL, filePath),
-
-  // Settings
-  getSettings: (): Promise<AppSettings> =>
-    ipcRenderer.invoke(IpcChannels.SETTINGS_GET),
-  setSettings: (settings: Partial<AppSettings>): Promise<AppSettings> =>
-    ipcRenderer.invoke(IpcChannels.SETTINGS_SET, settings),
-  selectDirectory: (): Promise<string | null> =>
-    ipcRenderer.invoke(IpcChannels.SETTINGS_SELECT_DIRECTORY),
-
-  // Sync
-  syncCheckNow: (): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.SYNC_CHECK_NOW),
-  syncTogglePlaylist: (playlistId: string): Promise<SyncConfig> =>
-    ipcRenderer.invoke(IpcChannels.SYNC_TOGGLE_PLAYLIST, playlistId),
-  syncDismissTracks: (playlistId: string): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.SYNC_DISMISS_TRACKS, playlistId),
-  onSyncResult: (callback: (result: SyncResult) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, result: SyncResult): void => callback(result)
-    ipcRenderer.on(IpcChannels.SYNC_RESULT, handler)
-    return () => ipcRenderer.removeListener(IpcChannels.SYNC_RESULT, handler)
-  },
-  onSyncStatus: (callback: (status: { syncing: boolean; message?: string }) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, status: { syncing: boolean; message?: string }): void => callback(status)
-    ipcRenderer.on(IpcChannels.SYNC_STATUS, handler)
-    return () => ipcRenderer.removeListener(IpcChannels.SYNC_STATUS, handler)
+  downloads: {
+    preflight: (deviceId: string, tracks: Track[]): Promise<Preflight> =>
+      ipcRenderer.invoke(IPC.DOWNLOAD_PREFLIGHT, deviceId, tracks),
+    start: (request: DownloadRequest): Promise<DownloadSummary> =>
+      ipcRenderer.invoke(IPC.DOWNLOAD_START, request),
+    cancel: (runId?: string): Promise<void> => ipcRenderer.invoke(IPC.DOWNLOAD_CANCEL, runId),
+    onProgress: (handler: (p: DownloadProgress) => void): (() => void) =>
+      on(IPC.DOWNLOAD_PROGRESS, handler),
+    onDone: (handler: (s: DownloadSummary) => void): (() => void) => on(IPC.DOWNLOAD_DONE, handler)
   },
 
-  // Update
-  checkForUpdates: (): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.UPDATE_CHECK),
-  downloadUpdate: (): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.UPDATE_DOWNLOAD),
-  installUpdate: (): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.UPDATE_INSTALL),
-  onUpdateStatus: (callback: (status: UpdateStatus) => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, status: UpdateStatus): void =>
-      callback(status)
-    ipcRenderer.on(IpcChannels.UPDATE_STATUS, handler)
-    return () => ipcRenderer.removeListener(IpcChannels.UPDATE_STATUS, handler)
-  },
-
-  // Cache & data
-  extractColor: (url: string): Promise<{ r: number; g: number; b: number } | null> =>
-    ipcRenderer.invoke(IpcChannels.CACHE_EXTRACT_COLOR, url),
-  getCacheStats: (): Promise<{ bytes: number; files: number }> =>
-    ipcRenderer.invoke(IpcChannels.CACHE_STATS),
-  clearCache: (): Promise<{ bytes: number; files: number }> =>
-    ipcRenderer.invoke(IpcChannels.CACHE_CLEAR),
-  clearAllData: (): Promise<void> =>
-    ipcRenderer.invoke(IpcChannels.CACHE_CLEAR_ALL_DATA),
-
-  // Tray / media key events
-  onTrayTogglePlay: (callback: () => void) => {
-    const handler = (): void => callback()
-    ipcRenderer.on('tray:toggle-play', handler)
-    return () => ipcRenderer.removeListener('tray:toggle-play', handler)
-  },
-  onTrayNext: (callback: () => void) => {
-    const handler = (): void => callback()
-    ipcRenderer.on('tray:next', handler)
-    return () => ipcRenderer.removeListener('tray:next', handler)
-  },
-  onTrayPrev: (callback: () => void) => {
-    const handler = (): void => callback()
-    ipcRenderer.on('tray:prev', handler)
-    return () => ipcRenderer.removeListener('tray:prev', handler)
-  },
-  // App-menu actions (Settings ⌘, / View ▸ Toggle Sidebar ⌘\)
-  onMenuNavigate: (callback: (path: string) => void) => {
-    const handler = (_e: unknown, path: string): void => callback(path)
-    ipcRenderer.on('menu:navigate', handler)
-    return () => ipcRenderer.removeListener('menu:navigate', handler)
-  },
-  onToggleSidebar: (callback: () => void) => {
-    const handler = (): void => callback()
-    ipcRenderer.on('menu:toggle-sidebar', handler)
-    return () => ipcRenderer.removeListener('menu:toggle-sidebar', handler)
+  settings: {
+    get: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.SETTINGS_GET),
+    set: (patch: Partial<AppSettings>): Promise<AppSettings> =>
+      ipcRenderer.invoke(IPC.SETTINGS_SET, patch),
+    pickFolder: (): Promise<string | null> => ipcRenderer.invoke(IPC.SETTINGS_PICK_FOLDER)
   }
 }
 
-export type Api = typeof api
+export type TuneVaultApi = typeof api
 
 contextBridge.exposeInMainWorld('api', api)

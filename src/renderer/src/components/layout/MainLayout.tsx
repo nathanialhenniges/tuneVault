@@ -1,66 +1,82 @@
-import { useRef, useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { Sidebar } from './Sidebar'
-import { TitleBar } from './TitleBar'
+import { useEffect, type ReactNode } from 'react'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { Cog6ToothIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/outline'
+import wolfIcon from '../../assets/wolf-icon.png'
+import { api } from '../../lib/api'
 
-interface MainLayoutProps {
-  children: React.ReactNode
-}
+const LINKS = [
+  { to: '/devices', label: 'Devices', Icon: DevicePhoneMobileIcon },
+  { to: '/settings', label: 'Settings', Icon: Cog6ToothIcon }
+]
 
-// Same order as the sidebar nav — Cmd/Ctrl+1..6 jumps between views (native tab feel).
-const VIEW_PATHS = ['/', '/playlists', '/downloads', '/library', '/device', '/settings']
-
-export function MainLayout({ children }: MainLayoutProps): JSX.Element {
-  const mainRef = useRef<HTMLElement>(null)
-  const location = useLocation()
+export function MainLayout({ children }: { children: ReactNode }): React.JSX.Element {
   const navigate = useNavigate()
-  const [sidebarHidden, setSidebarHidden] = useState(false)
 
-  // Reset scroll position on route navigation
-  useEffect(() => {
-    mainRef.current?.scrollTo(0, 0)
-  }, [location.pathname])
-
-  // App-menu actions: Settings (⌘,) navigates, View ▸ Toggle Sidebar (⌘\) hides it.
-  useEffect(() => {
-    const offNav = window.api.onMenuNavigate((path) => navigate(path))
-    const offToggle = window.api.onToggleSidebar(() => setSidebarHidden((h) => !h))
-    return () => {
-      offNav()
-      offToggle()
-    }
-  }, [navigate])
-
-  // Cmd/Ctrl+1..5 view navigation
-  useEffect(() => {
-    const handler = (e: KeyboardEvent): void => {
-      // Don't steal Cmd/Ctrl+digit while typing in a field (matches useKeyboardShortcuts).
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return
-      const n = Number(e.key)
-      if (n >= 1 && n <= VIEW_PATHS.length) {
-        e.preventDefault()
-        navigate(VIEW_PATHS[n - 1])
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [navigate])
+  useEffect(() => api.onMenu('menu:settings', () => navigate('/settings')), [navigate])
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      {!sidebarHidden && <Sidebar />}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <TitleBar />
-        <main ref={mainRef} className="flex-1 overflow-y-auto px-10 py-9">
-          {/* min-h-full (not h-full): full height so short pages can center
-              vertically, but grows with tall pages so the py-9 top/bottom
-              padding actually wraps the content instead of being overflowed. */}
-          <div className="max-w-5xl mx-auto w-full min-h-full flex flex-col">
-            {children}
-          </div>
-        </main>
-      </div>
+    <div className="flex h-full">
+      <nav
+        aria-label="Main"
+        className="flex w-[212px] shrink-0 flex-col border-r border-hairline bg-surface/70"
+      >
+        {/* The window has no title bar, so this strip is the drag handle. It is
+            also what keeps the logo clear of the traffic lights. */}
+        <div className="drag-region h-11 shrink-0" />
+
+        <div className="flex items-center gap-2.5 px-5 pt-1 pb-7">
+          <img
+            src={wolfIcon}
+            alt=""
+            width={30}
+            height={30}
+            className="rounded-lg ring-1 ring-hairline"
+          />
+          <span className="font-display text-[17px] font-semibold tracking-[-0.03em]">
+            TuneVault
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-0.5 px-3">
+          {LINKS.map(({ to, label, Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `relative flex min-h-11 items-center gap-3 rounded-[10px] px-3 text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-surface-2 text-text'
+                    : 'text-text-muted hover:bg-surface-2/60 hover:text-text'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  {/* Active state is carried by the fill and this signal bar,
+                      not by colour alone. */}
+                  <span
+                    aria-hidden="true"
+                    className={`absolute left-0 h-5 w-[3px] rounded-r-full transition-opacity ${
+                      isActive ? 'bg-accent opacity-100' : 'opacity-0'
+                    }`}
+                  />
+                  <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                  {label}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </div>
+
+        <p className="mt-auto px-5 pb-5 text-[11px] leading-relaxed text-text-muted/80">
+          Personal case-study build. Not affiliated with Spotify, Apple or YouTube.
+        </p>
+      </nav>
+
+      <main className="flex min-h-0 flex-1 flex-col">
+        <div className="drag-region h-11 shrink-0" />
+        <div className="flex-1 overflow-y-auto">{children}</div>
+      </main>
     </div>
   )
 }

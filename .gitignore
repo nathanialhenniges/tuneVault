@@ -7,3 +7,7 @@ resources/bin/
 Thumbs.db
 .env
 .env.local
+
+# Reference copy of the pre-3.0 codebase. Restore with:
+#   mkdir -p old && git archive <commit> | tar -x -C old
+old/

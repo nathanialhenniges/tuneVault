@@ -1,98 +1,52 @@
 import { create } from 'zustand'
-import type { DownloadProgress } from '../../../shared/models'
-
-const PROGRESS_THROTTLE_MS = 200
+import type { DownloadProgress, DownloadRequest } from '../../../shared/models'
+import type { DownloadSummary } from '../../../preload'
+import { api } from '../lib/api'
+import { useDeviceStore } from './deviceStore'
+import { useToastStore } from './toastStore'
 
 interface DownloadState {
-  downloads: Map<string, DownloadProgress>
-  isDownloading: boolean
-  setProgress: (progress: DownloadProgress) => void
-  setComplete: (trackId: string) => void
-  setError: (trackId: string, error: string) => void
-  cancelOne: (trackId: string) => Promise<void>
-  cancelAll: () => Promise<void>
-  clear: () => void
+  /** Set while a run is in flight. */
+  running: boolean
+  deviceId: string | null
+  /** Keyed by track id. */
+  progress: Record<string, DownloadProgress>
+  lastSummary: DownloadSummary | null
+  start: (request: DownloadRequest) => Promise<void>
+  cancel: () => void
+  applyProgress: (p: DownloadProgress) => void
+  reset: () => void
 }
 
-// Throttle progress updates per track to reduce re-renders
-const lastProgressUpdate = new Map<string, number>()
-
 export const useDownloadStore = create<DownloadState>((set, get) => ({
-  downloads: new Map(),
-  isDownloading: false,
+  running: false,
+  deviceId: null,
+  progress: {},
+  lastSummary: null,
 
-  setProgress: (progress) => {
-    // Always apply status transitions and 100% completion immediately
-    const isStatusChange = progress.status !== 'downloading' || progress.percent >= 100
-    if (!isStatusChange) {
-      const now = Date.now()
-      const lastUpdate = lastProgressUpdate.get(progress.trackId) ?? 0
-      if (now - lastUpdate < PROGRESS_THROTTLE_MS) return
-      lastProgressUpdate.set(progress.trackId, now)
+  start: async (request) => {
+    if (get().running) return
+    set({ running: true, deviceId: request.deviceId, progress: {}, lastSummary: null })
+    try {
+      const summary = await api.downloads.start(request)
+      // The per-track outcome is already on screen, row by row, and an
+      // unfocused finish gets a native notification from the main process.
+      // Nothing else needs announcing.
+      set({ lastSummary: summary })
+    } catch (err) {
+      // A run that could not start at all has no row to report itself in.
+      useToastStore.getState().push('error', err instanceof Error ? err.message : String(err))
+    } finally {
+      set({ running: false })
+      await useDeviceStore.getState().refreshUsage(request.deviceId)
     }
-    set((state) => {
-      const downloads = new Map(state.downloads)
-      downloads.set(progress.trackId, progress)
-      return { downloads, isDownloading: true }
-    })
   },
 
-  setComplete: (trackId) =>
-    set((state) => {
-      const downloads = new Map(state.downloads)
-      const existing = downloads.get(trackId)
-      if (existing) {
-        downloads.set(trackId, { ...existing, status: 'done', percent: 100 })
-      }
-      const stillActive = Array.from(downloads.values()).some(
-        (d) => d.status !== 'done' && d.status !== 'skipped' && d.status !== 'error'
-      )
-      return { downloads, isDownloading: stillActive }
-    }),
-
-  setError: (trackId, error) =>
-    set((state) => {
-      const downloads = new Map(state.downloads)
-      const existing = downloads.get(trackId)
-      if (existing) {
-        downloads.set(trackId, { ...existing, status: 'error', error })
-      }
-      const stillActive = Array.from(downloads.values()).some(
-        (d) => d.status !== 'done' && d.status !== 'skipped' && d.status !== 'error'
-      )
-      return { downloads, isDownloading: stillActive }
-    }),
-
-  cancelOne: async (trackId) => {
-    await window.api.cancelDownload(trackId)
-    set((state) => {
-      const downloads = new Map(state.downloads)
-      const existing = downloads.get(trackId)
-      if (existing && existing.status !== 'done' && existing.status !== 'skipped') {
-        downloads.set(trackId, { ...existing, status: 'error', error: 'Cancelled' })
-      }
-      const stillActive = Array.from(downloads.values()).some(
-        (d) => d.status !== 'done' && d.status !== 'skipped' && d.status !== 'error'
-      )
-      return { downloads, isDownloading: stillActive }
-    })
+  cancel: () => {
+    void api.downloads.cancel()
   },
 
-  cancelAll: async () => {
-    await window.api.cancelAllDownloads()
-    set((state) => {
-      const downloads = new Map(state.downloads)
-      for (const [id, d] of downloads) {
-        if (d.status !== 'done' && d.status !== 'skipped') {
-          downloads.set(id, { ...d, status: 'error', error: 'Cancelled' })
-        }
-      }
-      return { downloads, isDownloading: false }
-    })
-  },
+  applyProgress: (p) => set((s) => ({ progress: { ...s.progress, [p.trackId]: p } })),
 
-  clear: () => {
-    lastProgressUpdate.clear()
-    set({ downloads: new Map(), isDownloading: false })
-  }
+  reset: () => set({ progress: {}, lastSummary: null })
 }))

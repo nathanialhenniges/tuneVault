@@ -49,10 +49,6 @@ export class BinaryService {
     return this.resolve('ffmpeg')
   }
 
-  getFfprobePath(): string {
-    return this.resolve('ffprobe')
-  }
-
   /**
    * Run yt-dlp with the given args, buffering stdout. Resolves stdout on a clean
    * exit; with `allowPartial`, also resolves when yt-dlp exits non-zero but still
