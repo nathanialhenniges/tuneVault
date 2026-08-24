@@ -6,7 +6,7 @@ import { formatBytes } from '../../shared/utils'
 import { DeviceService } from '../services/device.service'
 import { DownloadService } from '../services/download.service'
 import { notifyRunFinished } from '../services/notify.service'
-import { resolvePlaylist } from '../services/resolve'
+import { listMusicAppPlaylists, resolvePlaylist } from '../services/resolve'
 import { SettingsService } from '../services/settings.service'
 
 type GetWindow = () => BrowserWindow | null
@@ -45,7 +45,15 @@ async function confirmDestructive(
  */
 export function registerIpc(getWindow: GetWindow): void {
   // --- Playlists ---
-  ipcMain.handle(IPC.PLAYLIST_RESOLVE, (_e, url: string) => resolvePlaylist(url))
+  ipcMain.handle(IPC.PLAYLIST_RESOLVE, (_e, url: string, refresh?: boolean) =>
+    resolvePlaylist(
+      url,
+      (progress) => getWindow()?.webContents.send(IPC.PLAYLIST_RESOLVE_PROGRESS, progress),
+      { refresh }
+    )
+  )
+
+  ipcMain.handle(IPC.MUSIC_APP_PLAYLISTS, () => listMusicAppPlaylists())
 
   // --- Devices ---
   ipcMain.handle(IPC.DEVICE_LIST, () => DeviceService.list())
@@ -94,6 +102,12 @@ export function registerIpc(getWindow: GetWindow): void {
   ipcMain.handle(IPC.DEVICE_TRACKS, (_e, id: string) => DeviceService.tracks(id))
   ipcMain.handle(IPC.DEVICE_REVEAL_TRACK, (_e, id: string, path: string) =>
     DeviceService.revealTrack(id, path)
+  )
+  ipcMain.handle(IPC.DEVICE_TRACK_KEYS, async (_e, id: string) => [
+    ...(await DeviceService.existingTrackKeys(id))
+  ])
+  ipcMain.handle(IPC.DEVICE_FORGET_SOURCE, (_e, id: string, url: string) =>
+    DeviceService.forgetSource(id, url)
   )
   ipcMain.handle(IPC.DEVICE_DELETE_TRACKS, async (_e, id: string, paths: string[]) => {
     if (paths.length === 0) return 0
@@ -148,9 +162,11 @@ export function registerIpc(getWindow: GetWindow): void {
     DownloadService.preflight(deviceId, tracks)
   )
   ipcMain.handle(IPC.DOWNLOAD_START, async (_e, request: DownloadRequest) => {
-    const summary = await DownloadService.start(request, (progress) => {
-      getWindow()?.webContents.send(IPC.DOWNLOAD_PROGRESS, progress)
-    })
+    const summary = await DownloadService.start(
+      request,
+      (progress) => getWindow()?.webContents.send(IPC.DOWNLOAD_PROGRESS, progress),
+      (status) => getWindow()?.webContents.send(IPC.DOWNLOAD_RUN_STATUS, status)
+    )
     getWindow()?.webContents.send(IPC.DOWNLOAD_DONE, summary)
     notifyRunFinished(getWindow(), request.playlist.title, summary)
     return summary
@@ -164,6 +180,24 @@ export function registerIpc(getWindow: GetWindow): void {
   ipcMain.handle(IPC.SETTINGS_SET, (_e, patch: Partial<AppSettings>) =>
     SettingsService.save(patch)
   )
+  ipcMain.handle(IPC.SETTINGS_PICK_COOKIES, async () => {
+    const window = getWindow()
+    const options: Electron.OpenDialogOptions = {
+      title: 'Choose a cookies.txt File',
+      buttonLabel: 'Use This File',
+      message: 'Netscape-format cookie file exported from your browser.',
+      properties: ['openFile'],
+      filters: [
+        { name: 'Cookie file', extensions: ['txt'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    }
+    const result = window
+      ? await dialog.showOpenDialog(window, options)
+      : await dialog.showOpenDialog(options)
+    return result.canceled ? null : (result.filePaths[0] ?? null)
+  })
+
   ipcMain.handle(IPC.SETTINGS_PICK_FOLDER, async () => {
     const window = getWindow()
     const options: Electron.OpenDialogOptions = {

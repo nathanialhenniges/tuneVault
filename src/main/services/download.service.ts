@@ -6,6 +6,7 @@ import type {
   AudioFormat,
   DownloadProgress,
   DownloadRequest,
+  RunStatus,
   Track
 } from '../../shared/models'
 import {
@@ -18,7 +19,10 @@ import {
   trackKey
 } from '../../shared/utils'
 import { BinaryService } from './binary.service'
+import { cookieArgs } from './cookies.service'
 import { DeviceService } from './device.service'
+import { searchOne } from './resolve/youtube'
+import { flush as flushSearchCache } from './search-cache.service'
 import { MetadataService } from './metadata.service'
 import { SettingsService } from './settings.service'
 import { TagService } from './tag.service'
@@ -28,6 +32,19 @@ const binary = new BinaryService()
 /** Marker prefix so we can pick our progress lines out of yt-dlp's chatter. */
 const PROGRESS_MARK = '[TV]'
 const RETRY_DELAYS_MS = [5_000, 15_000, 45_000]
+
+/*
+ * Bulk imports are worked through in batches with a cooldown between them.
+ *
+ * A library import can ask for thousands of tracks, and a long unbroken run of
+ * requests is what earns a rate limit. Pausing between batches keeps the
+ * average rate low without making small playlists wait for nothing — a run
+ * shorter than one batch never pauses at all.
+ * ponytail: fixed sizes. If imports are throttled anyway, raise the pause
+ * before lowering the batch.
+ */
+const BATCH_SIZE = 25
+const BATCH_PAUSE_MS = 20_000
 
 export interface RunSummary {
   runId: string
@@ -40,6 +57,7 @@ export interface RunSummary {
 }
 
 type Emit = (progress: DownloadProgress) => void
+type EmitStatus = (status: RunStatus) => void
 
 const runs = new Map<string, AbortController>()
 
@@ -176,7 +194,11 @@ export class DownloadService {
     }
   }
 
-  static async start(request: DownloadRequest, emit: Emit): Promise<RunSummary> {
+  static async start(
+    request: DownloadRequest,
+    emit: Emit,
+    emitStatus: EmitStatus = () => {}
+  ): Promise<RunSummary> {
     const settings = SettingsService.load()
     const format: AudioFormat = settings.audioFormat
     const device = DeviceService.get(request.deviceId)
@@ -215,11 +237,16 @@ export class DownloadService {
     const done: { track: Track; fileName: string }[] = []
 
     let next = 0
+    let batchEnd = 0
     const worker = async (): Promise<void> => {
-      while (next < tracks.length && !signal.aborted) {
+      while (next < batchEnd && !signal.aborted) {
         const track = tracks[next++]
         const base = trackFileBaseName(track)
-        const fileName = `${base}.${format}`
+        // A local file is copied as-is, so it keeps its own container.
+        const extension = track.localPath
+          ? (track.localPath.slice(track.localPath.lastIndexOf('.') + 1) || format)
+          : format
+        const fileName = `${base}.${extension}`
         const filePath = join(folder, fileName)
         const report = (
           status: DownloadProgress['status'],
@@ -260,13 +287,47 @@ export class DownloadService {
             break
           }
 
+          // Music app tracks arrive without a source URL: matching every track
+          // in a library just to draw a preview would take hours, so it happens
+          // here, for the tracks actually chosen.
+          if (track.needsMatch && !track.sourceUrl) {
+            report('downloading', 0, 'Finding a match…')
+            const hit = await searchOne(`${track.artist} ${track.title}`, key)
+            if (!hit) {
+              const message = 'No match found on YouTube or SoundCloud.'
+              summary.failed++
+              summary.errors.push({ title: track.title, message })
+              report('error', 0, message)
+              continue
+            }
+            track.sourceUrl = hit.sourceUrl
+            track.source = hit.source
+            if (!track.thumbnail) track.thumbnail = hit.thumbnail
+          }
+
           report('downloading', 0)
-          await this.downloadOne(track, filePath, base, format, signal, (percent, detail) =>
-            report('downloading', percent, detail)
-          )
+          if (track.localPath) {
+            // Already on this Mac: copy it rather than re-downloading a worse
+            // copy of a file the user already owns.
+            await fs.copyFile(track.localPath, filePath)
+            report('downloading', 100)
+          } else {
+            await this.downloadOne(track, filePath, base, format, signal, (percent, detail) =>
+              report('downloading', percent, detail)
+            )
+          }
 
           report('tagging', 99)
-          await this.tagOne(track, filePath, folder, format, tracks.length, settings.metadataEnrichment)
+          if (!track.localPath) {
+            await this.tagOne(
+              track,
+              filePath,
+              folder,
+              format,
+              tracks.length,
+              settings.metadataEnrichment
+            )
+          }
 
           summary.completed++
           seen.add(key)
@@ -287,16 +348,49 @@ export class DownloadService {
       }
     }
 
+    const batchCount = Math.max(1, Math.ceil(tracks.length / BATCH_SIZE))
+
     try {
-      await Promise.all(
-        Array.from({ length: Math.min(settings.concurrency, tracks.length || 1) }, worker)
-      )
+      for (let start = 0; start < tracks.length && !signal.aborted; start += BATCH_SIZE) {
+        batchEnd = Math.min(start + BATCH_SIZE, tracks.length)
+        const size = batchEnd - start
+        const batch = Math.floor(start / BATCH_SIZE) + 1
+        emitStatus({ runId, total: tracks.length, batch, batchCount })
+
+        await Promise.all(
+          Array.from({ length: Math.min(settings.concurrency, size || 1) }, worker)
+        )
+
+        if (tracks.length - batchEnd > 0 && !signal.aborted) {
+          // One status event with an end time, not one message per waiting
+          // track — a library run would otherwise emit thousands per pause.
+          emitStatus({
+            runId,
+            total: tracks.length,
+            batch,
+            batchCount,
+            cooldownUntil: Date.now() + BATCH_PAUSE_MS
+          })
+          await sleep(BATCH_PAUSE_MS, signal).catch(() => undefined)
+        }
+      }
     } finally {
       runs.delete(runId)
+      flushSearchCache()
     }
 
     summary.cancelled = signal.aborted
     if (done.length) await this.writeM3U(folder, request.playlist.title, done)
+
+    // Remember where this came from so the device can be topped up later.
+    if (!summary.cancelled && request.playlist.url) {
+      DeviceService.rememberSource(device.id, {
+        url: request.playlist.url,
+        title: request.playlist.title,
+        provider: request.playlist.provider,
+        trackCount: request.playlist.tracks.length
+      })
+    }
     return summary
   }
 
@@ -309,6 +403,7 @@ export class DownloadService {
     onPercent: (percent: number, detail: string) => void
   ): Promise<void> {
     const args = [
+      ...cookieArgs(),
       track.sourceUrl,
       '-f',
       // Fall back to a muxed stream: some videos expose no audio-only format.
@@ -363,11 +458,14 @@ export class DownloadService {
     let album = track.album
     let cover: Buffer | null = null
 
-    if (enrich) {
+    // The Music app already told us the genre; no need to ask the internet.
+    genre = track.genre ?? null
+
+    if (enrich && !(track.genre && track.album)) {
       const meta = await MetadataService.lookup(track.artist, track.title)
-      genre = meta.genre
+      genre = genre ?? meta.genre
       year = meta.year
-      if (meta.album) album = meta.album
+      if (meta.album && !track.album) album = meta.album
       // The source thumbnail is the last resort: real cover art beats a video
       // still, but a video still beats no art at all.
       cover = await MetadataService.fetchFirstImage([...meta.coverUrls, track.thumbnail])

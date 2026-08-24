@@ -177,6 +177,17 @@ input[type='number'] {
    honour System Settings > Appearance > "Show scroll bars"; restyling them is
    one of the loudest tells that a desktop app is a web page. */
 
+/* Indeterminate progress: a band sweeping the rail, for work whose total is
+   genuinely unknown. */
+@keyframes slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
 /* One orchestrated reveal on mount, staggered by index through --i. */
 @keyframes rise {
   from {

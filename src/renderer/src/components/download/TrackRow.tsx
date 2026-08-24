@@ -8,6 +8,8 @@ interface Props {
   selected: boolean
   disabled: boolean
   state?: DownloadProgress
+  /** Already present on this device, so downloading it again would duplicate. */
+  onDevice?: boolean
   onToggle: (index: number, shiftKey: boolean) => void
 }
 
@@ -28,6 +30,7 @@ export function TrackRow({
   selected,
   disabled,
   state,
+  onDevice,
   onToggle
 }: Props): React.JSX.Element {
   const status = state ? STATUS[state.status] : undefined
@@ -68,7 +71,11 @@ export function TrackRow({
       </label>
 
       <span className="tabular w-36 shrink-0 text-right text-xs">
-        {status ? (
+        {!status && onDevice ? (
+          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-text-muted">
+            On device
+          </span>
+        ) : status ? (
           <span className={status.tone} title={state?.detail}>
             {downloading ? `${Math.round(state.percent)}%` : status.label}
             {state?.detail && downloading && (

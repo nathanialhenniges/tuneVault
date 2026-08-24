@@ -80,6 +80,10 @@ export class SettingsService {
       concurrency: Math.min(8, Math.max(1, Math.round(s.concurrency) || 1)),
       metadataEnrichment: !!s.metadataEnrichment,
       allowDuplicates: !!s.allowDuplicates,
+      cookieMode: s.cookieMode === 'browser' || s.cookieMode === 'file' ? s.cookieMode : 'off',
+      cookieBrowser: s.cookieBrowser || 'chrome',
+      cookieProfile: s.cookieProfile ?? '',
+      cookieFile: s.cookieFile ?? '',
       disclaimerAccepted: !!s.disclaimerAccepted
     }
   }

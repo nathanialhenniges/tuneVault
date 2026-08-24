@@ -1,18 +1,25 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeftIcon, FolderOpenIcon, TrashIcon } from '@heroicons/react/24/outline'
+import {
+  ArrowLeftIcon,
+  FolderOpenIcon,
+  MusicalNoteIcon,
+  TrashIcon
+} from '@heroicons/react/24/outline'
 import type { DeviceFile } from '../../../../shared/models'
 import { api } from '../../lib/api'
 import { useDeviceStore } from '../../store/deviceStore'
 import { useDownloadStore } from '../../store/downloadStore'
 import { toastError } from '../../store/toastStore'
-import { AddMusicPanel } from '../download/AddMusicPanel'
+import { AddMusicPanel, type LoadRequest } from '../download/AddMusicPanel'
 import { Button } from '../ui/Button'
 import { PageHeader } from '../ui/PageHeader'
 import { DeviceFormModal } from './DeviceFormModal'
 import { DeviceFileList } from './DeviceFileList'
 import { DeviceUsageBar } from './DeviceUsageBar'
 import { ImportPanel } from './ImportPanel'
+import { MusicAppPicker } from './MusicAppPicker'
+import { SavedPlaylists } from './SavedPlaylists'
 
 export function DeviceDetailView(): React.JSX.Element {
   const { id = '' } = useParams()
@@ -22,6 +29,8 @@ export function DeviceDetailView(): React.JSX.Element {
 
   const [files, setFiles] = useState<DeviceFile[]>([])
   const [editing, setEditing] = useState(false)
+  const [loadRequest, setLoadRequest] = useState<LoadRequest | undefined>()
+  const [picking, setPicking] = useState(false)
 
   const device = devices.find((d) => d.id === id)
 
@@ -106,7 +115,30 @@ export function DeviceDetailView(): React.JSX.Element {
         <DeviceUsageBar usage={usage[device.id]} />
       </header>
 
-      <AddMusicPanel deviceId={device.id} />
+      <AddMusicPanel deviceId={device.id} loadRequest={loadRequest} />
+
+      {api.platform === 'darwin' && (
+        <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-hairline bg-surface p-5">
+          <div>
+            <h2 className="font-medium">Import from the Music app</h2>
+            <p className="mt-1 text-sm text-text-muted">
+              Reads your real library, including playlists whose public page only shows a handful
+              of tracks.
+            </p>
+          </div>
+          <Button disabled={running} onClick={() => setPicking(true)}>
+            <MusicalNoteIcon className="h-4 w-4" aria-hidden="true" />
+            Browse library
+          </Button>
+        </section>
+      )}
+
+      <SavedPlaylists
+        deviceId={device.id}
+        sources={device.sources ?? []}
+        busy={running}
+        onCheck={(url) => setLoadRequest({ url, nonce: Date.now() })}
+      />
 
       <ImportPanel deviceId={device.id} onImported={() => void loadFiles()} />
 
@@ -126,6 +158,12 @@ export function DeviceDetailView(): React.JSX.Element {
           }}
         />
       </section>
+
+      <MusicAppPicker
+        open={picking}
+        onClose={() => setPicking(false)}
+        onPick={(url) => setLoadRequest({ url, nonce: Date.now() })}
+      />
 
       <DeviceFormModal open={editing} device={device} onClose={() => setEditing(false)} />
     </div>

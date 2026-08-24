@@ -16,6 +16,7 @@ export function App(): React.JSX.Element {
   const { settings, loading, load, update } = useSettingsStore()
   const loadDevices = useDeviceStore((s) => s.load)
   const applyProgress = useDownloadStore((s) => s.applyProgress)
+  const applyRunStatus = useDownloadStore((s) => s.applyRunStatus)
 
   useEffect(() => {
     void load()
@@ -24,6 +25,7 @@ export function App(): React.JSX.Element {
 
   // One subscription for the whole app; the store fans it out by track id.
   useEffect(() => api.downloads.onProgress(applyProgress), [applyProgress])
+  useEffect(() => api.downloads.onRunStatus(applyRunStatus), [applyRunStatus])
 
   if (loading) {
     return <div className="flex h-full items-center justify-center text-text-muted">Loading…</div>

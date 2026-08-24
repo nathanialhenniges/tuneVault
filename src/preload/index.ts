@@ -8,6 +8,8 @@ import type {
   DownloadProgress,
   DownloadRequest,
   Playlist,
+  ResolveProgress,
+  RunStatus,
   Track
 } from '../shared/models'
 
@@ -49,8 +51,23 @@ export interface ImportResult {
 const api = {
   platform: process.platform,
 
-  resolvePlaylist: (url: string): Promise<Playlist> =>
-    ipcRenderer.invoke(IPC.PLAYLIST_RESOLVE, url),
+  /**
+   * Playlists in the Mac's Music app. Import one with
+   * `resolvePlaylist('musicapp://playlist/<id>')`.
+   */
+  musicAppPlaylists: (): Promise<{ id: string; name: string; trackCount: number }[]> =>
+    ipcRenderer.invoke(IPC.MUSIC_APP_PLAYLISTS),
+
+  /** `refresh` bypasses the 30-minute cache, for "check for new tracks". */
+  resolvePlaylist: (url: string, refresh = false): Promise<Playlist> =>
+    ipcRenderer.invoke(IPC.PLAYLIST_RESOLVE, url, refresh),
+
+  /**
+   * Resolving a Spotify or Apple Music link costs one YouTube search per track,
+   * so it reports as it goes rather than blocking silently.
+   */
+  onResolveProgress: (handler: (p: ResolveProgress) => void): (() => void) =>
+    on(IPC.PLAYLIST_RESOLVE_PROGRESS, handler),
 
   devices: {
     list: (): Promise<Device[]> => ipcRenderer.invoke(IPC.DEVICE_LIST),
@@ -68,6 +85,10 @@ const api = {
       ipcRenderer.invoke(IPC.DEVICE_DELETE_TRACKS, id, paths),
     revealTrack: (id: string, path: string): Promise<void> =>
       ipcRenderer.invoke(IPC.DEVICE_REVEAL_TRACK, id, path),
+    /** Identities of every song already on the device, for duplicate marking. */
+    trackKeys: (id: string): Promise<string[]> => ipcRenderer.invoke(IPC.DEVICE_TRACK_KEYS, id),
+    forgetSource: (id: string, url: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.DEVICE_FORGET_SOURCE, id, url),
     importFiles: (id: string, paths: string[]): Promise<ImportResult> =>
       ipcRenderer.invoke(IPC.DEVICE_IMPORT, id, paths),
     pickAudioFiles: (): Promise<string[]> => ipcRenderer.invoke(IPC.DEVICE_PICK_AUDIO)
@@ -104,14 +125,17 @@ const api = {
     cancel: (runId?: string): Promise<void> => ipcRenderer.invoke(IPC.DOWNLOAD_CANCEL, runId),
     onProgress: (handler: (p: DownloadProgress) => void): (() => void) =>
       on(IPC.DOWNLOAD_PROGRESS, handler),
-    onDone: (handler: (s: DownloadSummary) => void): (() => void) => on(IPC.DOWNLOAD_DONE, handler)
+    onDone: (handler: (s: DownloadSummary) => void): (() => void) => on(IPC.DOWNLOAD_DONE, handler),
+    onRunStatus: (handler: (s: RunStatus) => void): (() => void) =>
+      on(IPC.DOWNLOAD_RUN_STATUS, handler)
   },
 
   settings: {
     get: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.SETTINGS_GET),
     set: (patch: Partial<AppSettings>): Promise<AppSettings> =>
       ipcRenderer.invoke(IPC.SETTINGS_SET, patch),
-    pickFolder: (): Promise<string | null> => ipcRenderer.invoke(IPC.SETTINGS_PICK_FOLDER)
+    pickFolder: (): Promise<string | null> => ipcRenderer.invoke(IPC.SETTINGS_PICK_FOLDER),
+    pickCookieFile: (): Promise<string | null> => ipcRenderer.invoke(IPC.SETTINGS_PICK_COOKIES)
   }
 }
 

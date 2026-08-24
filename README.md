@@ -38,6 +38,12 @@ Paste a link. Press download. Drag the folder across.
 - **No duplicate downloads** - A song already on a device is skipped when a
   second playlist wants it. Turn that off in Settings if you would rather each
   playlist folder held a complete copy.
+- **Imports from the Music app** (macOS) - Reads your real library and
+  playlists, including personal playlists whose public web page only exposes a
+  handful of tracks. Tracks you own as files are copied across directly.
+- **Paced for rate limits** - Searches are throttled, work runs in batches with
+  a cooldown, and every match is cached permanently so a song is never looked
+  up twice.
 - **Drag files in, drag tracks out** - Drop your own audio files onto a device
   from Finder (or add them from the File menu), and drag any downloaded track
   straight out of the list onto the device in Finder.
@@ -104,6 +110,49 @@ track, the second one is skipped rather than downloaded and stored again -
 matching is on artist and title, ignoring track number, case and punctuation.
 Importing your own files obeys the same rule. **Settings > Allow the same song
 more than once** turns it off.
+
+### Importing from the Music app
+
+On macOS, **Browse library** on a device page lists every playlist in the Music
+app plus the entire library. This sees a personal playlist in full, unlike its
+public web page - Apple's own page reports only a handful of tracks for one.
+
+Tracks backed by a real file (purchased or uploaded) are copied straight across.
+Apple Music streaming tracks have no file to copy, so they are matched and
+downloaded from YouTube. Matching happens when you press Download, not while
+browsing, so opening a library of several thousand tracks is instant.
+
+The first time TuneVault controls the Music app, macOS asks for permission. If
+it was refused, allow it under System Settings > Privacy & Security >
+Automation.
+
+### Rate limits
+
+Matching songs on YouTube is the part that gets throttled, so TuneVault does
+less of it:
+
+- **Every match is cached permanently.** A song matched once is never searched
+  again, on any device, across restarts.
+- **Searches are paced** to roughly one per 1.2 seconds, through a single gate,
+  regardless of how many downloads run in parallel.
+- **Work runs in batches of 25** with a cooldown between them. A run shorter
+  than one batch never pauses.
+- **Local files and duplicates cost nothing** - neither is ever searched for.
+- Rate-limit responses back off exponentially with jitter.
+
+A YouTube Data API key does not help here and is not supported: `search.list`
+costs 100 of the 10,000 daily quota units, which is 100 searches per day, and
+the API returns no audio.
+
+**Settings > Sign-in for downloads** can pass your own cookies to yt-dlp, which
+clears most of YouTube's bot checks. Cookies come either from a browser profile
+on this Mac or from an exported cookies.txt. The browser profile is what selects
+between accounts.
+
+> Cookies are login credentials. TuneVault passes them to yt-dlp on this machine
+> and nothing else - they are never logged, copied or transmitted. Bulk
+> downloading while signed in carries some risk to the account used, so prefer a
+> secondary account.
 
 ### Storage limits
 

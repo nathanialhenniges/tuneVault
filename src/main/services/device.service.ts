@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import { promises as fs } from 'fs'
 import { basename, extname, join, resolve, sep } from 'path'
 import { shell } from 'electron'
-import type { Device, DeviceFile, DeviceUsage } from '../../shared/models'
+import type { Device, DeviceFile, DeviceUsage, PlaylistSource } from '../../shared/models'
 import { TagService } from './tag.service'
 import { parseTrackFileName, sanitizeFilename, trackKey } from '../../shared/utils'
 import { SettingsService } from './settings.service'
@@ -358,6 +358,43 @@ export class DeviceService {
       }
     }
     return result
+  }
+
+  /**
+   * Remember (or refresh) a playlist this device was filled from, so it can be
+   * checked for new tracks later without pasting the link again.
+   */
+  static rememberSource(
+    id: string,
+    source: Omit<PlaylistSource, 'addedAt' | 'lastCheckedAt'>
+  ): void {
+    const settings = SettingsService.load()
+    const device = settings.devices.find((d) => d.id === id)
+    if (!device) return
+
+    const now = new Date().toISOString()
+    const existing = device.sources?.find((s) => s.url === source.url)
+    const sources = [
+      ...(device.sources ?? []).filter((s) => s.url !== source.url),
+      {
+        ...source,
+        addedAt: existing?.addedAt ?? now,
+        lastCheckedAt: now
+      }
+    ].sort((a, b) => a.title.localeCompare(b.title))
+
+    SettingsService.save({
+      devices: settings.devices.map((d) => (d.id === id ? { ...d, sources } : d))
+    })
+  }
+
+  static forgetSource(id: string, url: string): void {
+    const settings = SettingsService.load()
+    SettingsService.save({
+      devices: settings.devices.map((d) =>
+        d.id === id ? { ...d, sources: (d.sources ?? []).filter((s) => s.url !== url) } : d
+      )
+    })
   }
 
   static async openFolder(id: string): Promise<void> {

@@ -1,4 +1,4 @@
-import type { AudioFormat } from './models'
+import type { AudioFormat, Provider } from './models'
 
 export function formatDuration(seconds: number): string {
   const s = Math.max(0, Math.round(seconds))
@@ -66,6 +66,24 @@ export function parseTrackFileName(fileName: string): {
     artist: rest.slice(0, split),
     title: rest.slice(split + 3)
   }
+}
+
+/** Display names for each source a playlist can come from. */
+export const PROVIDER_LABEL: Record<Provider, string> = {
+  youtube: 'YouTube',
+  apple: 'Apple Music',
+  spotify: 'Spotify',
+  'music-app': 'Music app'
+}
+
+/**
+ * A playlist in the Mac's Music app, addressed as a pseudo-URL so it travels
+ * through the same resolve, preview and re-check machinery as a pasted link.
+ */
+export const MUSIC_APP_URL_PREFIX = 'musicapp://playlist/'
+
+export function musicAppPlaylistUrl(playlistId: string): string {
+  return `${MUSIC_APP_URL_PREFIX}${playlistId}`
 }
 
 /**

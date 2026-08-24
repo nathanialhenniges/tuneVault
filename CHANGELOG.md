@@ -44,6 +44,27 @@ music player.
   header declares its own length), so listing a device costs kilobytes per file
   rather than megabytes, and embedded cover art is served lazily over a
   dedicated `tvart://` protocol instead of being pushed through IPC.
+- **Import from the macOS Music app.** Browse every playlist plus the entire
+  library, addressed internally as a `musicapp://playlist/<id>` pseudo-URL so it
+  reuses the same preview, size preflight, duplicate check and "check for new
+  tracks" machinery as a pasted link. Tracks backed by a real file are copied
+  rather than downloaded, and album and genre come from the library instead of a
+  lookup. Reads properties in bulk (one Apple Event per property, not per
+  track): 156 tracks in ~300ms.
+- **Deferred matching.** Music app tracks are matched on YouTube when a download
+  starts, not while browsing, so opening a 3,800-track library is instant and no
+  search is spent on a track that is never selected.
+- **Rate-limit handling.** A permanent on-disk cache of every match, a single
+  paced gate for all searches, batches of 25 with a cooldown between them, and a
+  warning with a time estimate before a large import.
+- **Optional sign-in for downloads.** yt-dlp can use cookies from a browser
+  profile or an exported cookies.txt; the profile selects between accounts.
+  Cookies are passed to the local yt-dlp process only and never logged or
+  stored by TuneVault.
+- **Resolve progress.** Pasting a link now reports what it is doing — reading
+  the page, then matching track *n* of *m* — instead of blocking silently, and
+  the input is locked while it works.
+- **Filters** on both the imported track list and the device's own file list.
 - **Grouped library view.** Files are grouped by the playlist folder they came
   from, each group collapsible and showing its own track count and size, with a
   filter box that searches titles, artists, albums and genres.

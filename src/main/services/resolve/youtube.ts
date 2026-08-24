@@ -1,5 +1,7 @@
 import { BinaryService } from '../binary.service'
 import type { Playlist, Track, TrackSource } from '../../../shared/models'
+import { trackKey } from '../../../shared/utils'
+import { SearchCache } from '../search-cache.service'
 
 interface FlatEntry {
   id: string
@@ -93,6 +95,25 @@ export async function fetchYouTubePlaylist(url: string): Promise<Playlist> {
   }
 }
 
+/*
+ * YouTube search is the rate-limited part of this app, and a bulk import can
+ * ask for thousands of them. Every search goes through one gate with a minimum
+ * gap, so no caller can flood it however many workers are running.
+ * ponytail: fixed gap; if imports feel slow and nothing is 429ing, lower it.
+ */
+const SEARCH_GAP_MS = 1200
+let searchChain: Promise<unknown> = Promise.resolve()
+
+function throttleSearch<T>(fn: () => Promise<T>): Promise<T> {
+  const run = searchChain.then(async () => {
+    const result = await fn()
+    await new Promise((r) => setTimeout(r, SEARCH_GAP_MS))
+    return result
+  })
+  searchChain = run.catch(() => undefined)
+  return run as Promise<T>
+}
+
 export interface SearchHit {
   id: string
   title: string
@@ -107,7 +128,40 @@ export interface SearchHit {
  * fallback — this is how Spotify and Apple Music tracks become downloadable,
  * since neither service exposes free audio.
  */
-export async function searchOne(query: string): Promise<SearchHit | null> {
+/**
+ * `cacheKey` lets the caller key the result on the song's identity rather than
+ * the raw query string, so the same song found through different phrasings
+ * still counts as one lookup.
+ */
+export async function searchOne(query: string, cacheKey?: string): Promise<SearchHit | null> {
+  const key = cacheKey ?? trackKey('', query)
+  const cached = SearchCache.get(key)
+  // A cache hit costs no request at all, so it must not wait behind the gate.
+  if (cached) {
+    return {
+      id: cached.id,
+      title: query,
+      duration: cached.duration,
+      sourceUrl: cached.sourceUrl,
+      source: cached.source,
+      thumbnail: cached.thumbnail
+    }
+  }
+
+  const hit = await throttleSearch(() => searchOneNow(query))
+  if (hit) {
+    SearchCache.set(key, {
+      id: hit.id,
+      sourceUrl: hit.sourceUrl,
+      source: hit.source,
+      duration: hit.duration,
+      thumbnail: hit.thumbnail
+    })
+  }
+  return hit
+}
+
+async function searchOneNow(query: string): Promise<SearchHit | null> {
   const backends = [
     { prefix: 'ytsearch1:', source: 'youtube' as const },
     { prefix: 'scsearch1:', source: 'soundcloud' as const }

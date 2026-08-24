@@ -107,6 +107,45 @@ because the same song sits at a different position in every playlist.
 so the check costs no file reads. Both downloading and importing honour it, and
 `settings.allowDuplicates` turns it off.
 
+## Rate limits
+
+Searching YouTube is the throttled operation; downloading is far less so. The
+defences, in order of how much they matter:
+
+1. `SearchCache` — a permanent on-disk map from `trackKey` to the resolved
+   video. A song matched once is never searched again. This is the big one.
+2. `throttleSearch` in `resolve/youtube.ts` — one gate, minimum 1.2s between
+   searches, no matter how many workers are running.
+3. Batches of 25 with a 20s cooldown in `DownloadService.start`.
+4. Local files and duplicate-skipped tracks are never searched at all.
+
+**Do not add a YouTube Data API key.** `search.list` costs 100 of 10,000 daily
+quota units — 100 searches per day — and returns no audio. It is strictly worse
+than what is here. Do not add IP rotation or proxy cycling either; that is
+evasion, not pacing.
+
+Cookies (`cookies.service.ts`) are the legitimate remaining lever. They are
+credentials: they go to the local yt-dlp process and nowhere else. Never log
+them, never read their contents, never include them in an error message.
+
+## Music app (macOS)
+
+`resolve/music-app.ts` drives the Music app through JXA. Two rules:
+
+- **Read properties in bulk** (`tracks.name()`, `tracks.artist()`, …). Each is
+  one Apple Event; per-track access on a 3,800-track library is thousands.
+  `location` is the exception — it throws for Apple Music streaming tracks, so
+  it is only requested where `class` is `fileTrack`.
+- **Never match at resolve time.** The library can be thousands of tracks;
+  tracks carry `needsMatch` and are searched at download time, for the selection
+  only.
+
+Position is the **playlist index**, not the album track number the Music app
+reports — that repeats across albums and scrambles the `NN - ` ordering.
+
+Note Apple's public web page for a personal playlist is not a substitute: it
+exposes only a handful of tracks and its own `trackCount` field agrees.
+
 ## Persistence
 
 `app.getPath('userData')/settings.json`, written atomically (tmp + rename).
