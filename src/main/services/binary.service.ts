@@ -3,6 +3,7 @@ import { spawn } from 'child_process'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { is } from '@electron-toolkit/utils'
+import { cookieArgs } from './cookies.service'
 
 function getPlatformDir(): string {
   switch (process.platform) {
@@ -49,10 +50,6 @@ export class BinaryService {
     return this.resolve('ffmpeg')
   }
 
-  getFfprobePath(): string {
-    return this.resolve('ffprobe')
-  }
-
   /**
    * Run yt-dlp with the given args, buffering stdout. Resolves stdout on a clean
    * exit; with `allowPartial`, also resolves when yt-dlp exits non-zero but still
@@ -60,8 +57,11 @@ export class BinaryService {
    */
   runYtdlp(args: string[], opts: { allowPartial?: boolean } = {}): Promise<string> {
     const ytdlpPath = this.getYtdlpPath()
+    // Cookies help here too: a signed-in session is challenged far less often
+    // than an anonymous one.
+    const full = [...cookieArgs(), ...args]
     return new Promise((resolve, reject) => {
-      const proc = spawn(ytdlpPath, args)
+      const proc = spawn(ytdlpPath, full)
       let stdout = ''
       let stderr = ''
       proc.stdout?.on('data', (d: Buffer) => (stdout += d.toString()))

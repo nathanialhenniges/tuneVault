@@ -1,264 +1,104 @@
-import { app, shell, BrowserWindow, globalShortcut, nativeImage, protocol, net } from 'electron'
-import { join, resolve } from 'path'
-import { pathToFileURL } from 'url'
+import { app, shell, BrowserWindow, nativeTheme } from 'electron'
+import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { registerAllIpc } from './ipc/register'
-import { buildAppMenu } from './menu'
-import { createTray } from './tray'
-import { abortAllDownloads, hasActiveDownloads } from './ipc/download.ipc'
-import { SettingsService } from './services/settings.service'
-import { CacheService } from './services/cache.service'
+import { registerArtworkScheme, handleArtworkProtocol } from './artwork-protocol'
+import { registerIpc, shutdownIpc } from './ipc/register'
+import { buildAppMenu, registerAboutPanel } from './menu'
+import { clearBadgeOnFocus } from './services/notify.service'
+import { WindowStateService } from './services/window-state.service'
 
-function getIconPath(): string {
-  return is.dev
-    ? join(app.getAppPath(), 'build', 'icon.png')
-    : join(process.resourcesPath, 'icon.png')
-}
-
-// Catch uncaught exceptions and unhandled rejections so the app doesn't crash silently
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught exception:', err)
-})
-process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled rejection:', reason)
-})
-
-// Set the app name BEFORE `ready` (and before anything resolves getPath('userData')).
-// macOS reads the menu/app name and the userData dir at launch — setting this inside
-// whenReady() is too late, leaving menus as "Electron" and scattering saved data.
+// Set the app name BEFORE `ready`. macOS reads the menu name and the userData
+// directory at launch — doing this inside whenReady() is too late and leaves the
+// menu as "Electron" with settings saved under the wrong folder.
 app.setName('TuneVault')
 
-// 1.4 — Single instance lock: prevent multiple app instances writing to same data files
-const gotLock = app.requestSingleInstanceLock()
-if (!gotLock) {
+// Downloads write to disk; two instances sharing one settings.json would clobber
+// each other's device list.
+if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
+  let mainWindow: BrowserWindow | null = null
 
-// Register custom protocol for serving local audio files
-// This avoids CSP and cross-origin issues with file:// URLs
-protocol.registerSchemesAsPrivileged([
-  {
-    scheme: 'tunevault',
-    privileges: {
-      standard: true,
-      secure: true,
-      supportFetchAPI: true,
-      stream: true
-    }
-  },
-  {
-    // Proxy-cache for remote thumbnails: load fast, work offline.
-    scheme: 'tvcache',
-    privileges: {
-      standard: true,
-      secure: true,
-      supportFetchAPI: true,
-      stream: true
-    }
-  }
-])
+  // Must happen before `ready`.
+  registerArtworkScheme()
 
-function createWindow(): BrowserWindow {
-  const isMac = process.platform === 'darwin'
-  const isWin = process.platform === 'win32'
+  process.on('uncaughtException', (err) => console.error('Uncaught exception:', err))
+  process.on('unhandledRejection', (reason) => console.error('Unhandled rejection:', reason))
 
-  const opts: Electron.BrowserWindowConstructorOptions = {
-    // Default + min sizes chosen to open comfortably on a 1280x720 display
-    // (height stays under ~680 usable after the menu bar).
-    width: 1160,
-    height: 680,
-    minWidth: 880,
-    minHeight: 600,
-    show: false,
-    title: 'TuneVault',
-    icon: getIconPath(),
-    titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
-    // Windows 11 Mica needs a transparent backing so the material shows through.
-    // macOS + Linux keep a solid opaque backing: window-level vibrancy only ever
-    // surfaced as a bright hairline of desktop bleed at the frame edge (the 90%
-    // opaque content layer hid the rest), so it's not worth that artifact. The
-    // in-app glass (backdrop-filter on .glass-*) gives the depth instead.
-    backgroundColor: isWin ? '#00000000' : '#09090b',
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
-    }
-  }
-  if (isMac) {
-    opts.trafficLightPosition = { x: 16, y: 16 }
-  }
-  if (isWin) {
-    // Native window controls (min/max/close) drawn by the OS into our chrome.
-    opts.titleBarOverlay = { color: '#00000000', symbolColor: '#fafafa', height: 48 }
-    // Win11 Mica material behind the (semi-opaque) content. Ignored on Win10.
-    opts.backgroundMaterial = 'mica'
-  }
+  /** Painted before the first frame so launch never flashes white. */
+  const chassis = (): string => (nativeTheme.shouldUseDarkColors ? '#080b12' : '#f6f7f9')
 
-  const mainWindow = new BrowserWindow(opts)
-
-  mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
-  })
-
-  // Hide instead of close when downloads are active so they continue in the background
-  mainWindow.on('close', (e) => {
-    const quitting = (app as unknown as Record<string, boolean>).isQuitting
-    if (hasActiveDownloads() && !quitting) {
-      e.preventDefault()
-      mainWindow.hide()
-    }
-  })
-
-  // 1.6 — Only allow https/http URLs to be opened externally
-  mainWindow.webContents.setWindowOpenHandler((details) => {
-    try {
-      const url = new URL(details.url)
-      if (url.protocol === 'https:' || url.protocol === 'http:') {
-        shell.openExternal(details.url)
+  function createWindow(): BrowserWindow {
+    const bounds = WindowStateService.load()
+    const window = new BrowserWindow({
+      ...bounds,
+      minWidth: 900,
+      minHeight: 560,
+      show: false,
+      title: 'TuneVault',
+      icon: is.dev ? join(app.getAppPath(), 'build', 'icon.png') : undefined,
+      // Full-height content with the traffic lights inset, the way Music, Mail
+      // and Notes are drawn. The renderer provides its own drag strip.
+      titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+      backgroundColor: chassis(),
+      webPreferences: {
+        preload: join(__dirname, '../preload/index.js'),
+        sandbox: false,
+        contextIsolation: true,
+        nodeIntegration: false
       }
-    } catch {
-      // Invalid URL — do not open
-    }
-    return { action: 'deny' }
-  })
-
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
-  } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
-  }
-
-  return mainWindow
-}
-
-app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.nathanialhenniges.tunevault')
-
-  // Set About panel for macOS to show TuneVault instead of Electron
-  if (process.platform === 'darwin') {
-    const iconPath = is.dev
-      ? join(app.getAppPath(), 'build', 'icon.png')
-      : join(process.resourcesPath, 'icon.png')
-    app.setAboutPanelOptions({
-      applicationName: 'TuneVault',
-      applicationVersion: app.getVersion(),
-      copyright: '© 2025 Nathanial Henniges',
-      iconPath
     })
-  }
 
-  // 1.5 — Protocol handler with path traversal protection
-  protocol.handle('tunevault', (request) => {
-    // URL format: tunevault://audio/<encoded-file-path>
-    const url = new URL(request.url)
-    const filePath = decodeURIComponent(url.pathname.replace(/^\/+/, ''))
-    // On Windows paths don't start with /, on macOS/Linux they do
-    const resolvedPath = resolve(process.platform === 'win32' ? filePath : '/' + filePath)
+    window.on('ready-to-show', () => window.show())
+    WindowStateService.track(window)
+    clearBadgeOnFocus(window)
 
-    // Validate the resolved path is under the configured music directory.
-    // Bail on an empty musicDir — resolve('') is the cwd, which would otherwise
-    // expose the whole working directory through the protocol.
-    const settings = SettingsService.load()
-    if (!settings.musicDir) return new Response('Forbidden', { status: 403 })
-    const musicDir = resolve(settings.musicDir)
-    if (!resolvedPath.startsWith(musicDir + '/') && !resolvedPath.startsWith(musicDir + '\\') && resolvedPath !== musicDir) {
-      return new Response('Forbidden', { status: 403 })
-    }
+    // Any link the app can't handle itself opens in the real browser, never in a
+    // second Electron window.
+    window.webContents.setWindowOpenHandler(({ url }) => {
+      if (/^https?:\/\//.test(url)) void shell.openExternal(url)
+      return { action: 'deny' }
+    })
 
-    const fileUrl = pathToFileURL(resolvedPath).href
-
-    // Forward only the Range header (for HTML5 <audio> seeking) rather than the
-    // renderer's full header set.
-    const range = request.headers.get('range')
-    return net.fetch(fileUrl, range ? { headers: { Range: range } } : {})
-  })
-
-  // tvcache://img/<encodeURIComponent(remoteUrl)> — serve a remote thumbnail from
-  // the local disk cache, fetching + storing it on a miss. 404 on miss while
-  // offline so <AlbumArt> falls back to its gradient placeholder.
-  protocol.handle('tvcache', async (request) => {
-    try {
-      const u = new URL(request.url)
-      const remote = decodeURIComponent(u.pathname.replace(/^\/+/, ''))
-      if (!/^https?:\/\//.test(remote)) return new Response('Bad request', { status: 400 })
-      const file = await CacheService.getArtFile(remote)
-      if (!file) return new Response('Not found', { status: 404 })
-      return net.fetch(pathToFileURL(file).href)
-    } catch {
-      return new Response('Bad request', { status: 400 })
-    }
-  })
-
-  // Set dock icon in dev mode (production uses electron-builder config)
-  if (process.platform === 'darwin') {
-    const iconPath = is.dev
-      ? join(app.getAppPath(), 'build', 'icon.png')
-      : join(process.resourcesPath, 'icon.png')
-    try {
-      const icon = nativeImage.createFromPath(iconPath)
-      if (!icon.isEmpty()) {
-        app.dock.setIcon(icon)
-      }
-    } catch {
-      // Icon may not exist yet
-    }
-  }
-
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
-  })
-
-  const mainWindow = createWindow()
-
-  // 1.3 — Register IPC handlers once, not on every window creation
-  registerAllIpc(mainWindow)
-  createTray(mainWindow)
-  buildAppMenu(mainWindow)
-
-  // Media key support
-  globalShortcut.register('MediaPlayPause', () => {
-    mainWindow.webContents.send('tray:toggle-play')
-  })
-  globalShortcut.register('MediaNextTrack', () => {
-    mainWindow.webContents.send('tray:next')
-  })
-  globalShortcut.register('MediaPreviousTrack', () => {
-    mainWindow.webContents.send('tray:prev')
-  })
-
-  // 1.3 — On activate, only recreate window (IPC already registered above)
-  app.on('activate', () => {
-    const existing = BrowserWindow.getAllWindows()
-    if (existing.length === 0) {
-      createWindow()
+    if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+      void window.loadURL(process.env['ELECTRON_RENDERER_URL'])
     } else {
-      existing[0].show()
+      void window.loadFile(join(__dirname, '../renderer/index.html'))
     }
-  })
+    return window
+  }
 
-  // 1.4 — Focus existing window when second instance is launched
   app.on('second-instance', () => {
+    if (!mainWindow) return
     if (mainWindow.isMinimized()) mainWindow.restore()
-    mainWindow.show()
     mainWindow.focus()
   })
-})
 
-// Track when the app is truly quitting vs just closing a window
-app.on('before-quit', () => {
-  ;(app as unknown as Record<string, boolean>).isQuitting = true
-  // 2.4 — Abort all active downloads on quit so child processes aren't orphaned
-  abortAllDownloads()
-})
+  app.whenReady().then(() => {
+    electronApp.setAppUserModelId('com.nathanialhenniges.tunevault')
+    app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
 
-app.on('will-quit', () => {
-  globalShortcut.unregisterAll()
-})
+    registerAboutPanel()
+    handleArtworkProtocol()
+    registerIpc(() => mainWindow)
+    buildAppMenu((channel) => mainWindow?.webContents.send(channel))
+    mainWindow = createWindow()
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin' && !hasActiveDownloads()) {
-    app.quit()
-  }
-})
+    // The OS light/dark switch repaints the window backing; the renderer picks
+    // the change up on its own through `prefers-color-scheme`.
+    nativeTheme.on('updated', () => mainWindow?.setBackgroundColor(chassis()))
 
-} // end of single-instance lock block
+    // Clicking the Dock icon with no windows open must reopen one.
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow()
+    })
+  })
+
+  // On macOS closing the last window must not quit the app.
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit()
+  })
+
+  // Kill any running yt-dlp child so it can't outlive the app.
+  app.on('before-quit', shutdownIpc)
+}
