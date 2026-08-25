@@ -23,6 +23,9 @@ export const IPC = {
   DEVICE_TRACK_KEYS: 'device:track-keys',
   DEVICE_FORGET_SOURCE: 'device:forget-source',
   DEVICE_SET_TRANSFERRED: 'device:set-transferred',
+  DEVICE_ENRICH: 'device:enrich',
+  DEVICE_ENRICH_PROGRESS: 'device:enrich-progress',
+  DEVICE_ENRICH_CANCEL: 'device:enrich-cancel',
   DRAG_OUT: 'device:drag-out',
 
   // Downloads

@@ -91,6 +91,14 @@ const api = {
     trackKeys: (id: string): Promise<TrackIndex> => ipcRenderer.invoke(IPC.DEVICE_TRACK_KEYS, id),
     forgetSource: (id: string, url: string): Promise<void> =>
       ipcRenderer.invoke(IPC.DEVICE_FORGET_SOURCE, id, url),
+    /** Fill in metadata that files on this device are missing. */
+    enrich: (id: string): Promise<{ scanned: number; filled: number; cancelled: boolean }> =>
+      ipcRenderer.invoke(IPC.DEVICE_ENRICH, id),
+    cancelEnrich: (id: string): Promise<void> => ipcRenderer.invoke(IPC.DEVICE_ENRICH_CANCEL, id),
+    onEnrichProgress: (
+      handler: (p: { done: number; total: number; name: string; filled: number }) => void
+    ): (() => void) => on(IPC.DEVICE_ENRICH_PROGRESS, handler),
+
     /** Mark files as copied onto the physical device, or clear the mark. */
     setTransferred: (id: string, paths: string[], transferred: boolean): Promise<void> =>
       ipcRenderer.invoke(IPC.DEVICE_SET_TRANSFERRED, id, paths, transferred),

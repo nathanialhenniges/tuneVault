@@ -488,10 +488,13 @@ export class DownloadService {
     let album = track.album
     let cover: Buffer | null = null
 
-    // The Music app already told us the genre; no need to ask the internet.
+    // Genre from the source is trusted and kept, but year and cover art are not
+    // in a Music app listing at all. An earlier version skipped the lookup
+    // whenever genre and album were known, which left 185 of 287 files on a real
+    // device with no year and the Music app imports with no artwork.
     genre = track.genre ?? null
 
-    if (enrich && !(track.genre && track.album)) {
+    if (enrich) {
       const meta = await MetadataService.lookup(track.artist, track.title)
       genre = genre ?? meta.genre
       year = meta.year

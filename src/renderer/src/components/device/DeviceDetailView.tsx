@@ -17,6 +17,7 @@ import { PageHeader } from '../ui/PageHeader'
 import { DeviceFormModal } from './DeviceFormModal'
 import { DeviceFileList } from './DeviceFileList'
 import { DeviceUsageBar } from './DeviceUsageBar'
+import { EnrichPanel } from './EnrichPanel'
 import { ImportPanel } from './ImportPanel'
 import { MusicAppPicker } from './MusicAppPicker'
 import { SavedPlaylists } from './SavedPlaylists'
@@ -141,6 +142,8 @@ export function DeviceDetailView(): React.JSX.Element {
       />
 
       <ImportPanel deviceId={device.id} onImported={() => void loadFiles()} />
+
+      <EnrichPanel deviceId={device.id} onDone={() => void loadFiles()} />
 
       <section className="space-y-3">
         <h2 className="font-display text-lg">

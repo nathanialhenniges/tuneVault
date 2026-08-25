@@ -5,6 +5,7 @@ import type { AppSettings, DownloadRequest, Track } from '../../shared/models'
 import { formatBytes } from '../../shared/utils'
 import { DeviceService } from '../services/device.service'
 import { DownloadService } from '../services/download.service'
+import { EnrichService } from '../services/enrich.service'
 import { notifyRunFinished } from '../services/notify.service'
 import { listMusicAppPlaylists, resolvePlaylist } from '../services/resolve'
 import { SettingsService } from '../services/settings.service'
@@ -107,6 +108,12 @@ export function registerIpc(getWindow: GetWindow): void {
   ipcMain.handle(IPC.DEVICE_FORGET_SOURCE, (_e, id: string, url: string) =>
     DeviceService.forgetSource(id, url)
   )
+  ipcMain.handle(IPC.DEVICE_ENRICH, (_e, id: string) =>
+    EnrichService.run(id, (progress) =>
+      getWindow()?.webContents.send(IPC.DEVICE_ENRICH_PROGRESS, progress)
+    )
+  )
+  ipcMain.handle(IPC.DEVICE_ENRICH_CANCEL, (_e, id: string) => EnrichService.cancel(id))
   ipcMain.handle(
     IPC.DEVICE_SET_TRANSFERRED,
     (_e, id: string, paths: string[], transferred: boolean) =>
@@ -126,9 +133,18 @@ export function registerIpc(getWindow: GetWindow): void {
     }
     return DeviceService.deleteTracks(id, paths)
   })
-  ipcMain.handle(IPC.DEVICE_IMPORT, (_e, id: string, paths: string[]) =>
-    DeviceService.importFiles(id, paths)
-  )
+  ipcMain.handle(IPC.DEVICE_IMPORT, async (_e, id: string, paths: string[]) => {
+    const result = await DeviceService.importFiles(id, paths)
+    // A dragged-in file is copied byte-for-byte, so it arrives with whatever
+    // gaps the original had. Fill them in rather than leaving the user with
+    // untagged, artless tracks.
+    if (result.copied > 0 && SettingsService.load().metadataEnrichment) {
+      void EnrichService.run(id, (progress) =>
+        getWindow()?.webContents.send(IPC.DEVICE_ENRICH_PROGRESS, progress)
+      ).catch(() => undefined)
+    }
+    return result
+  })
   ipcMain.handle(IPC.DEVICE_PICK_AUDIO, async () => {
     const window = getWindow()
     const options: Electron.OpenDialogOptions = {
