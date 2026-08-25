@@ -103,6 +103,17 @@ Private playlists cannot be read.
     Imported/                        # files you dragged in yourself
 ```
 
+### Marking what is on the device
+
+Files stay in the folder after you copy them across, so the list keeps track of
+what has actually been transferred. Select any files - or a whole playlist with
+the **select** link in its header - and press **Mark as on iPod**. Marked files
+get a badge, each playlist header shows how many of its tracks are across, and
+the **Not moved yet** filter narrows the list to what is still waiting.
+
+Marks are bookkeeping only: they never affect what gets downloaded, and
+**Unmark** reverses one. A mark is dropped automatically if its file is deleted.
+
 ### Duplicates
 
 By default a device holds one copy of any given song. If two playlists share a

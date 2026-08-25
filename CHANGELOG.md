@@ -138,6 +138,17 @@ music player.
   component, one global `:focus-visible` treatment, and 44px minimum hit
   targets.
 
+### Added (unreleased)
+
+- **Mark files as copied onto the device.** Select files, or a whole playlist
+  from its group header, and mark them; marked rows get a badge, group headers
+  show a moved/total count, and an All / Not moved yet / On iPod filter narrows
+  the list. Marks are stored by path relative to the device folder, pruned when
+  a file disappears, and never affect what gets downloaded.
+- **Select all is always available** in the device file list. It previously
+  disappeared as soon as one file was selected, leaving no way to then select
+  everything.
+
 ### Removed
 
 - The entire playback stack: player bar, now playing, queue, visualizer,

@@ -164,6 +164,18 @@ reports — that repeats across albums and scrambles the `NN - ` ordering.
 Note Apple's public web page for a personal playlist is not a substitute: it
 exposes only a handful of tracks and its own `trackCount` field agrees.
 
+## Transfer marks
+
+`transfer.service.ts` records which files have been dragged onto the physical
+device. This is **not** deduplication — duplicate protection already works off
+what is on disk, and the user keeps the files in the folder after copying them.
+It answers a different question: what have I actually moved across yet.
+
+Keyed by path relative to the device folder, so moving or renaming the whole
+folder keeps the marks; renaming one file loses its mark, which is the accepted
+trade for not keeping a database. Marks are pruned whenever the file list is
+read, and dropped with the device.
+
 ## Persistence
 
 `app.getPath('userData')/settings.json`, written atomically (tmp + rename).

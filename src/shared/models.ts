@@ -111,6 +111,8 @@ export interface DeviceFile {
   size: number
   /** Absent when the file carries no readable ID3 tag. */
   tags?: FileTags
+  /** Marked as already copied onto the physical device. */
+  transferred: boolean
 }
 
 /**

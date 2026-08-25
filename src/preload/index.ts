@@ -91,6 +91,9 @@ const api = {
     trackKeys: (id: string): Promise<TrackIndex> => ipcRenderer.invoke(IPC.DEVICE_TRACK_KEYS, id),
     forgetSource: (id: string, url: string): Promise<void> =>
       ipcRenderer.invoke(IPC.DEVICE_FORGET_SOURCE, id, url),
+    /** Mark files as copied onto the physical device, or clear the mark. */
+    setTransferred: (id: string, paths: string[], transferred: boolean): Promise<void> =>
+      ipcRenderer.invoke(IPC.DEVICE_SET_TRANSFERRED, id, paths, transferred),
     importFiles: (id: string, paths: string[]): Promise<ImportResult> =>
       ipcRenderer.invoke(IPC.DEVICE_IMPORT, id, paths),
     pickAudioFiles: (): Promise<string[]> => ipcRenderer.invoke(IPC.DEVICE_PICK_AUDIO)

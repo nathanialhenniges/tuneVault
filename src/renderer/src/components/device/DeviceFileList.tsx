@@ -1,10 +1,13 @@
 import { useMemo, useRef, useState } from 'react'
 import {
   ArrowTopRightOnSquareIcon,
+  ArrowUturnLeftIcon,
+  CheckCircleIcon,
   ChevronRightIcon,
   MagnifyingGlassIcon,
   TrashIcon
 } from '@heroicons/react/24/outline'
+import { CheckCircleIcon as CheckCircleSolid } from '@heroicons/react/24/solid'
 import type { DeviceFile } from '../../../../shared/models'
 import { formatBytes, parseTrackFileName } from '../../../../shared/utils'
 import { api } from '../../lib/api'
@@ -56,21 +59,28 @@ function group(files: DeviceFile[]): Group[] {
  */
 export function DeviceFileList({ deviceId, files, onChanged }: Props): React.JSX.Element {
   const [query, setQuery] = useState('')
+  const [status, setStatus] = useState<'all' | 'todo' | 'done'>('all')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const lastToggled = useRef<string | null>(null)
 
   const filtered = useMemo(() => {
+    const byStatus =
+      status === 'all'
+        ? files
+        : files.filter((f) => (status === 'done' ? f.transferred : !f.transferred))
     const q = query.trim().toLowerCase()
-    if (!q) return files
+    if (!q) return byStatus
     // Search the real metadata too, not just the filename — "jazz" should find
     // tracks by genre.
-    return files.filter((f) =>
+    return byStatus.filter((f) =>
       [f.name, f.folder, f.tags?.title, f.tags?.artist, f.tags?.album, f.tags?.genre]
         .filter(Boolean)
         .some((value) => (value as string).toLowerCase().includes(q))
     )
-  }, [files, query])
+  }, [files, query, status])
+
+  const movedCount = files.filter((f) => f.transferred).length
 
   const groups = useMemo(() => group(filtered), [filtered])
   const visiblePaths = useMemo(() => filtered.map((f) => f.path), [filtered])
@@ -84,6 +94,16 @@ export function DeviceFileList({ deviceId, files, onChanged }: Props): React.JSX
       return next
     })
     lastToggled.current = path
+  }
+
+  const mark = async (paths: string[], transferred: boolean): Promise<void> => {
+    try {
+      await api.devices.setTransferred(deviceId, paths, transferred)
+      setSelected(new Set())
+      await onChanged()
+    } catch (err) {
+      toastError(err)
+    }
   }
 
   const trash = async (paths: string[]): Promise<void> => {
@@ -123,22 +143,56 @@ export function DeviceFileList({ deviceId, files, onChanged }: Props): React.JSX
           />
         </div>
 
-        {selected.size > 0 ? (
+        {/* Always available: previously this vanished the moment one file was
+            selected, leaving no way to then select everything. */}
+        <Button
+          size="sm"
+          disabled={!filtered.length}
+          onClick={() => setSelected(allSelected ? new Set() : new Set(visiblePaths))}
+        >
+          {allSelected ? 'Select none' : 'Select all'}
+        </Button>
+
+        {selected.size > 0 && (
           <>
             <span className="tabular text-sm text-text-muted">{selected.size} selected</span>
-            <Button size="sm" onClick={() => setSelected(new Set())}>
-              Clear
+            <Button size="sm" variant="primary" onClick={() => void mark([...selected], true)}>
+              <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
+              Mark as on iPod
+            </Button>
+            <Button size="sm" onClick={() => void mark([...selected], false)}>
+              <ArrowUturnLeftIcon className="h-4 w-4" aria-hidden="true" />
+              Unmark
             </Button>
             <Button size="sm" variant="danger" onClick={() => void trash([...selected])}>
               <TrashIcon className="h-4 w-4" aria-hidden="true" />
               Move to Trash
             </Button>
           </>
-        ) : (
-          <Button size="sm" onClick={() => setSelected(new Set(visiblePaths))} disabled={!filtered.length}>
-            Select all
-          </Button>
         )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        {(
+          [
+            ['all', `All ${files.length}`],
+            ['todo', `Not moved yet ${files.length - movedCount}`],
+            ['done', `On iPod ${movedCount}`]
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            aria-pressed={status === value}
+            onClick={() => setStatus(value)}
+            className={`tabular rounded-full px-2.5 py-1 text-xs transition-colors ${
+              status === value
+                ? 'bg-accent text-ink'
+                : 'bg-surface-2 text-text-muted hover:text-text'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {filtered.length === 0 ? (
@@ -171,8 +225,36 @@ export function DeviceFileList({ deviceId, files, onChanged }: Props): React.JSX
                     aria-hidden="true"
                   />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{g.label}</span>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    title={`Select everything in ${g.label}`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelected((prev) => {
+                        const next = new Set(prev)
+                        const paths = g.files.map((f) => f.path)
+                        const already = paths.every((p) => next.has(p))
+                        for (const p of paths) {
+                          if (already) next.delete(p)
+                          else next.add(p)
+                        }
+                        return next
+                      })
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter' && e.key !== ' ') return
+                      e.preventDefault()
+                      e.stopPropagation()
+                      ;(e.currentTarget as HTMLElement).click()
+                    }}
+                    className="shrink-0 rounded px-2 py-1 text-xs text-text-muted underline decoration-dotted underline-offset-2 transition-colors hover:text-text"
+                  >
+                    select
+                  </span>
                   <span className="tabular shrink-0 text-xs text-text-muted">
-                    {g.files.length} · {formatBytes(g.bytes)}
+                    {g.files.filter((f) => f.transferred).length}/{g.files.length} on iPod ·{' '}
+                    {formatBytes(g.bytes)}
                   </span>
                 </button>
               </h3>
@@ -233,6 +315,15 @@ export function DeviceFileList({ deviceId, files, onChanged }: Props): React.JSX
                           </span>
                         </label>
 
+                        {file.transferred && (
+                          <span
+                            title="On the iPod"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-ok/15 px-2 py-0.5 text-[11px] text-ok"
+                          >
+                            <CheckCircleSolid className="h-3 w-3" aria-hidden="true" />
+                            On iPod
+                          </span>
+                        )}
                         <span className="tabular shrink-0 text-xs text-text-muted">
                           {formatBytes(file.size)}
                         </span>

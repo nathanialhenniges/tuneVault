@@ -4,6 +4,7 @@ import { basename, extname, join, resolve, sep } from 'path'
 import { shell } from 'electron'
 import type { Device, DeviceFile, DeviceUsage, PlaylistSource } from '../../shared/models'
 import { TagService } from './tag.service'
+import { TransferService } from './transfer.service'
 import {
   hasUsableArtist,
   isAlreadyPresent,
@@ -219,6 +220,7 @@ export class DeviceService {
         await fs.rm(dir, { recursive: true, force: true })
       })
     }
+    TransferService.forget(id)
     SettingsService.save({ devices: settings.devices.filter((d) => d.id !== id) })
   }
 
@@ -242,19 +244,32 @@ export class DeviceService {
     const device = this.get(id)
     const files = await walk(device.dir)
 
+    const relatives = files.map((f) => f.path.slice(device.dir.length + 1))
+    // Marks for files that have since been deleted are dead weight.
+    TransferService.prune(id, relatives)
+    const transferred = new Set(TransferService.list(id))
+
     return Promise.all(
-      files.map(async (f) => {
-        const rel = f.path.slice(device.dir.length + 1)
+      files.map(async (f, i) => {
+        const rel = relatives[i]
         const cut = rel.lastIndexOf(sep)
         return {
           path: f.path,
           name: cut < 0 ? rel : rel.slice(cut + 1),
           folder: cut < 0 ? '' : rel.slice(0, cut),
           size: f.size,
-          tags: await readTagsCached(f.path, f.size, f.mtimeMs)
+          tags: await readTagsCached(f.path, f.size, f.mtimeMs),
+          transferred: transferred.has(rel)
         }
       })
     )
+  }
+
+  /** Mark files as copied onto the physical device, or clear the mark. */
+  static setTransferred(id: string, paths: string[], transferred: boolean): void {
+    const device = this.get(id)
+    const relatives = paths.map((p) => assertInside(device.dir, p).slice(device.dir.length + 1))
+    TransferService.set(id, relatives, transferred)
   }
 
   /**

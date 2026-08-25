@@ -107,6 +107,11 @@ export function registerIpc(getWindow: GetWindow): void {
   ipcMain.handle(IPC.DEVICE_FORGET_SOURCE, (_e, id: string, url: string) =>
     DeviceService.forgetSource(id, url)
   )
+  ipcMain.handle(
+    IPC.DEVICE_SET_TRANSFERRED,
+    (_e, id: string, paths: string[], transferred: boolean) =>
+      DeviceService.setTransferred(id, paths, transferred)
+  )
   ipcMain.handle(IPC.DEVICE_DELETE_TRACKS, async (_e, id: string, paths: string[]) => {
     if (paths.length === 0) return 0
     // Files go to the Trash, so a single track needs no ceremony. A bulk
