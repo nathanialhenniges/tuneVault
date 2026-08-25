@@ -97,7 +97,7 @@ export function DevicesView(): React.JSX.Element {
                   to={`/devices/${device.id}`}
                   className="inline-flex min-h-11 items-center justify-center rounded-[10px] bg-accent px-4 text-sm font-medium text-ink transition-colors hover:bg-accent-hover"
                 >
-                  Add music
+                  Manage device
                 </Link>
                 <Button onClick={() => void openFolder(device.id)}>
                   <FolderOpenIcon className="h-4 w-4" aria-hidden="true" />

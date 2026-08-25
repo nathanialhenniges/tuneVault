@@ -140,14 +140,30 @@ music player.
 
 ### Added (unreleased)
 
+- **Fill in missing metadata.** Imported files were copied byte-for-byte and
+  never tagged, so 22 of 125 imports on a real device had no genre and 5 had no
+  artwork, against 1 of 162 for downloads. Imports are now enriched
+  automatically, and a device-wide backfill with progress is available on the
+  device page. Only missing fields are written.
+
 - **Mark files as copied onto the device.** Select files, or a whole playlist
   from its group header, and mark them; marked rows get a badge, group headers
   show a moved/total count, and an All / Not moved yet / On iPod filter narrows
   the list. Marks are stored by path relative to the device folder, pruned when
   a file disappears, and never affect what gets downloaded.
+- Renamed the device card's **Add music** action to **Manage device**, which is
+  what the page it opens actually does.
 - **Select all is always available** in the device file list. It previously
   disappeared as soon as one file was selected, leaving no way to then select
   everything.
+
+### Fixed (unreleased)
+
+- **Year and cover art were being skipped on downloads.** The metadata lookup
+  short-circuited whenever the source had already supplied a genre and album,
+  which also skipped year and artwork — 185 of 287 files on a real device had no
+  year. The lookup now always runs when enrichment is on; a genre the source
+  provided is still trusted over the looked-up one.
 
 ### Removed
 

@@ -164,6 +164,21 @@ reports — that repeats across albums and scrambles the `NN - ` ordering.
 Note Apple's public web page for a personal playlist is not a substitute: it
 exposes only a handful of tracks and its own `trackCount` field agrees.
 
+## Metadata gaps
+
+Two paths create files with missing tags, and both have bitten:
+
+1. **Imports are a byte-for-byte copy.** Nothing tags them, so they inherit the
+   source's gaps. `EnrichService` now runs after an import and can be run over a
+   whole device on demand.
+2. **The download lookup used to short-circuit** when the source already gave a
+   genre and album — which silently skipped year and cover art too. Do not
+   reintroduce that optimisation: the Music app supplies genre and album but
+   never year or artwork.
+
+`TagService.fillMissing` writes **only absent fields**. Never overwrite what a
+file already says about itself; the user's own tags outrank a lookup.
+
 ## Transfer marks
 
 `transfer.service.ts` records which files have been dragged onto the physical

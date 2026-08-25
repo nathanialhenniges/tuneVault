@@ -103,6 +103,14 @@ Private playlists cannot be read.
     Imported/                        # files you dragged in yourself
 ```
 
+### Filling in missing metadata
+
+Files you drag in are copied byte-for-byte, so they arrive with whatever tags
+the original had - often no genre, year or cover art. **Fill in metadata** on
+the device page looks those up and writes only the fields that are missing,
+leaving anything a file already says about itself alone. It runs automatically
+after an import, and can be run over a whole device at any time.
+
 ### Marking what is on the device
 
 Files stay in the folder after you copy them across, so the list keeps track of

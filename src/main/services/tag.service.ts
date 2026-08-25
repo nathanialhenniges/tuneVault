@@ -16,6 +16,15 @@ export interface TagInput {
   cover?: Buffer | null
 }
 
+/** Shape of a metadata lookup result, kept local so this file stays dependency-free. */
+export interface TrackMetadataLike {
+  genre: string | null
+  album: string | null
+  year: string | null
+  artist: string | null
+  coverUrls: string[]
+}
+
 export interface ReadTags {
   title?: string
   artist?: string
@@ -144,6 +153,71 @@ export class TagService {
       // embedded; checking for it avoids decoding the image just to know it exists.
       hasArtwork: buffer.includes('APIC', 0, 'latin1')
     }
+  }
+
+  /**
+   * Fill in only the tags a file is missing, leaving everything it already has
+   * alone. Returns the field names that were written, or null if nothing was.
+   *
+   * Used both after an import (a dragged-in file is copied byte-for-byte, so it
+   * arrives with whatever gaps the original had) and by the backfill pass over
+   * files already on a device.
+   */
+  static async fillMissing(
+    filePath: string,
+    lookup: (artist: string, title: string) => Promise<TrackMetadataLike>,
+    fetchArt: (urls: (string | undefined | null)[]) => Promise<Buffer | null>
+  ): Promise<string[] | null> {
+    const current = await this.read(filePath)
+    if (!current) return null
+
+    const title = current.title
+    const artist = current.artist
+    // Without at least a title there is nothing to look the track up by.
+    if (!title) return null
+
+    const needsText = !current.genre || !current.album || !current.year
+    const needsArt = !current.hasArtwork
+    if (!needsText && !needsArt) return null
+
+    const meta = await lookup(artist ?? '', title)
+    const filled: string[] = []
+    const payload: NodeID3.Tags = {}
+
+    if (!current.genre && meta.genre) {
+      payload.genre = meta.genre
+      filled.push('genre')
+    }
+    if (!current.album && meta.album) {
+      payload.album = meta.album
+      filled.push('album')
+    }
+    if (!current.year && meta.year) {
+      payload.year = meta.year
+      filled.push('year')
+    }
+    if (!current.artist && meta.artist) {
+      payload.artist = meta.artist
+      filled.push('artist')
+    }
+
+    if (needsArt) {
+      const cover = await fetchArt(meta.coverUrls)
+      if (cover?.length) {
+        payload.image = {
+          mime: cover.subarray(0, 4).toString('hex') === '89504e47' ? 'image/png' : 'image/jpeg',
+          type: { id: 3, name: 'front cover' },
+          description: 'Cover',
+          imageBuffer: cover
+        }
+        filled.push('artwork')
+      }
+    }
+
+    if (!filled.length) return null
+    const result = NodeID3.update(payload, filePath)
+    if (result !== true) return null
+    return filled
   }
 
   /** The embedded front cover, read on demand. */
