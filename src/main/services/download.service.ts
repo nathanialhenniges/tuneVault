@@ -15,6 +15,7 @@ import {
   estimateBytes,
   formatBytes,
   hasUsableArtist,
+  isRateLimitMessage,
   isAlreadyPresent,
   sanitizeFilename,
   toTrackIndexSets,
@@ -139,10 +140,6 @@ function runYtdlp(
       )
     )
   })
-}
-
-function isRateLimited(message: string): boolean {
-  return /\b429\b|too many requests|rate.?limit/i.test(message)
 }
 
 /** Leftovers yt-dlp drops next to the audio when a conversion is interrupted. */
@@ -427,9 +424,14 @@ export class DownloadService {
     signal: AbortSignal,
     onPercent: (percent: number, detail: string) => void
   ): Promise<void> {
+    // A crafted sourceUrl could otherwise be read as a flag rather than a
+    // target. Validated here and passed after `--` below.
+    if (!/^https?:\/\//i.test(track.sourceUrl)) {
+      throw new Error(`Refusing to download a non-http(s) source: ${track.sourceUrl}`)
+    }
+
     const args = [
       ...cookieArgs(),
-      track.sourceUrl,
       '-f',
       // Fall back to a muxed stream: some videos expose no audio-only format.
       'bestaudio/best',
@@ -446,7 +448,10 @@ export class DownloadService {
       '--progress-template',
       `download:${PROGRESS_MARK}%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s`,
       '-o',
-      filePath.replace(new RegExp(`\\.${format}$`), '.%(ext)s')
+      filePath.replace(new RegExp(`\\.${format}$`), '.%(ext)s'),
+      // `--` terminates options; the URL is the only positional argument.
+      '--',
+      track.sourceUrl
     ]
     // ID3 is MP3-only; for flac/opus let yt-dlp do the tagging since we can't.
     if (!TagService.supports(format)) args.push('--embed-metadata', '--embed-thumbnail')
@@ -460,7 +465,7 @@ export class DownloadService {
       } catch (err) {
         lastError = err as Error
         if (lastError.message === 'cancelled') throw lastError
-        if (!isRateLimited(lastError.message) || attempt === RETRY_DELAYS_MS.length) break
+        if (!isRateLimitMessage(lastError.message) || attempt === RETRY_DELAYS_MS.length) break
         // Backoff with jitter, so a queue of workers doesn't retry in lockstep.
         await sleep(jitter(RETRY_DELAYS_MS[attempt]), signal)
       }

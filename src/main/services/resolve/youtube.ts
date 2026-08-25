@@ -24,7 +24,9 @@ const binary = new BinaryService()
 /** One JSON object per line — yt-dlp's `--dump-json` NDJSON output. */
 async function flat(target: string): Promise<FlatEntry[]> {
   const stdout = await binary.runYtdlp(
-    ['--flat-playlist', '--dump-json', '--no-warnings', '--ignore-errors', target],
+    // `--` terminates options, so a URL or search term beginning with '-' is
+    // taken as the target rather than smuggled in as a yt-dlp flag.
+    ['--flat-playlist', '--dump-json', '--no-warnings', '--ignore-errors', '--', target],
     { allowPartial: true }
   )
   const entries: FlatEntry[] = []

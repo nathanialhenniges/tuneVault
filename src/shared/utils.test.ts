@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   artistVariants,
+  isRateLimitMessage,
   hasUsableArtist,
   isAlreadyPresent,
   parseTrackFileName,
@@ -23,6 +24,39 @@ describe('sanitizeFilename', () => {
   })
   it('collapses whitespace and trims', () => {
     expect(sanitizeFilename('  a   b  ')).toBe('a b')
+  })
+})
+
+describe('sanitizeFilename path traversal', () => {
+  it('never yields a traversal or hidden entry', () => {
+    for (const input of ['..', '.', '../..', '...', './x']) {
+      const out = sanitizeFilename(input)
+      expect(out.startsWith('.')).toBe(false)
+      expect(out).not.toBe('..')
+    }
+  })
+  it('falls back to a usable name when everything is stripped', () => {
+    expect(sanitizeFilename('..')).toBe('untitled')
+    expect(sanitizeFilename('///')).toBe('untitled')
+    expect(sanitizeFilename('   ')).toBe('untitled')
+  })
+  it('keeps a leading dot out of an otherwise normal name', () => {
+    expect(sanitizeFilename('.hidden playlist')).toBe('hidden playlist')
+  })
+})
+
+describe('isRateLimitMessage', () => {
+  it('recognises the ways yt-dlp reports a 429', () => {
+    for (const message of [
+      'ERROR: HTTP Error 429: Too Many Requests',
+      'the server responded with RATE_LIMITED',
+      'You have exceeded the rate limit'
+    ]) {
+      expect(isRateLimitMessage(message)).toBe(true)
+    }
+  })
+  it('does not fire on unrelated failures', () => {
+    expect(isRateLimitMessage('ERROR: Video unavailable')).toBe(false)
   })
 })
 

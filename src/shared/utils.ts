@@ -20,9 +20,32 @@ export function formatBytes(bytes: number): string {
 
 export const GB = 1024 ** 3
 
-/** Strips characters that are illegal in filenames on macOS/Windows. */
+/**
+ * Strips characters that are illegal in filenames on macOS/Windows.
+ *
+ * Leading dots go too, so a sanitised name can never come out as `.`, `..` or a
+ * hidden entry: a playlist or device titled ".." must not be able to walk out
+ * of its folder. Ported from the 2.6.1 audit.
+ */
 export function sanitizeFilename(name: string): string {
-  return name.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim()
+  const cleaned = name.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, ' ').trim()
+  const safe = cleaned.replace(/^\.+/, '').trim()
+  return safe.length ? safe : 'untitled'
+}
+
+/**
+ * True when a yt-dlp stderr line or download error signals HTTP 429. Shared so
+ * the place that first sees the signal and the place that decides whether to
+ * retry cannot drift apart. Ported from the 2.6.1 audit.
+ */
+export function isRateLimitMessage(message: string): boolean {
+  const lower = message.toLowerCase()
+  return (
+    lower.includes('rate_limited') ||
+    message.includes('429') ||
+    lower.includes('too many requests') ||
+    lower.includes('rate limit')
+  )
 }
 
 /** Canonical on-disk base name (no extension) for a track: "NN - Artist - Title". */

@@ -60,8 +60,34 @@ function getJson(url: string): Promise<Record<string, unknown> | null> {
   })
 }
 
+/*
+ * Album art only ever legitimately comes from these CDNs. The URLs are taken
+ * from MusicBrainz, iTunes and yt-dlp responses — third-party data — so without
+ * an allowlist a poisoned entry could point the main process at an internal
+ * address. Ported from the 2.6.1 audit, where the same hole existed behind the
+ * tvcache:// protocol.
+ */
+const ART_HOST =
+  /(?:^|\.)(?:ytimg\.com|ggpht\.com|googleusercontent\.com|sndcdn\.com|mzstatic\.com|scdn\.co|coverartarchive\.org|archive\.org|musicbrainz\.org)$/
+
+function isAllowedArtHost(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:' && ART_HOST.test(parsed.hostname.toLowerCase())
+  } catch {
+    return false
+  }
+}
+
+/** Art is never legitimately larger than this. */
+const MAX_ART_BYTES = 10 * 1024 * 1024
+
 /** Follows redirects — the Cover Art Archive always 307s to an archive.org host. */
 function getBuffer(url: string, redirectsLeft = 5): Promise<Buffer | null> {
+  // Re-checked on every hop: a redirect must not be able to walk off the
+  // allowlist and onto an internal host.
+  if (!isAllowedArtHost(url)) return Promise.resolve(null)
+
   return new Promise((resolve) => {
     const req = https.get(url, { headers: { 'User-Agent': USER_AGENT } }, (res) => {
       const status = res.statusCode ?? 0
@@ -75,9 +101,28 @@ function getBuffer(url: string, redirectsLeft = 5): Promise<Buffer | null> {
         resolve(null)
         return
       }
+      const type = res.headers['content-type'] ?? ''
+      if (type && !type.startsWith('image/')) {
+        res.resume()
+        resolve(null)
+        return
+      }
+
       const chunks: Buffer[] = []
-      res.on('data', (c: Buffer) => chunks.push(c))
-      res.on('end', () => resolve(Buffer.concat(chunks)))
+      let size = 0
+      res.on('data', (c: Buffer) => {
+        size += c.length
+        if (size > MAX_ART_BYTES) {
+          req.destroy()
+          resolve(null)
+          return
+        }
+        chunks.push(c)
+      })
+      res.on('end', () => {
+        const body = Buffer.concat(chunks)
+        resolve(body.length > 0 && body.length <= MAX_ART_BYTES ? body : null)
+      })
     })
     req.on('error', () => resolve(null))
     req.setTimeout(15000, () => {
